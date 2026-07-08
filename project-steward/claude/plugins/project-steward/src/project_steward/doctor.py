@@ -43,12 +43,13 @@ def run_checks(root, self_mode=False):
            "git not found on PATH")
     cli_on_path = bool(shutil.which("project-steward"))
     if os.name == "nt":
-        cli_missing_msg = ("plugin hooks cannot run on native Windows "
-                           "without the CLI — install with pipx/pip")
+        cli_missing_msg = ("Claude plugin hooks can use the bundled "
+                           "launcher when Python is available; install "
+                           "with pipx/pip for CLI commands and Codex hooks")
     else:
-        cli_missing_msg = ("plugin hook events fall back to the bundled "
-                           "python3 shim; install with pipx/pip for CLI "
-                           "commands and faster hooks")
+        cli_missing_msg = ("Claude plugin hooks can use the bundled "
+                           "launcher; install with pipx/pip for CLI "
+                           "commands and Codex hooks")
     _check(results, OK if cli_on_path else WARN,
            "project-steward on PATH",
            "" if cli_on_path else cli_missing_msg)
