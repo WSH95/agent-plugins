@@ -63,14 +63,14 @@ relying on it.
 
 Example interactions:
 
-- Ask Codex to initialize Project Steward in a repository so future
+- Ask agent to initialize Project Steward in a repository so future
   agents can read the project charter, plan, risks, decisions, and
   handoff state.
-- Ask Codex to resume a project after switching between Claude Code and
+- Ask agent to resume a project after switching between Claude Code and
   Codex, using repository state instead of native chat history.
-- Ask Codex to checkpoint progress before a risky change, after a
+- Ask agent to checkpoint progress before a risky change, after a
   decision, or before ending a session.
-- Ask Codex to wrap up a session with a zero-context handoff for the next
+- Ask agent to wrap up a session with a zero-context handoff for the next
   agent.
 
 ## License
