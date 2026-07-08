@@ -191,10 +191,29 @@ def _self_checks(root):
         path = root / hooks_file
         if path.is_file():
             try:
-                json.loads(path.read_text(encoding="utf-8"))
+                data = json.loads(path.read_text(encoding="utf-8"))
                 _check(results, OK, "self: %s parses" % hooks_file)
             except ValueError as exc:
                 _check(results, FAIL, "self: %s parses" % hooks_file, str(exc))
+                continue
+            if hooks_file == "plugin-src/codex/hooks/hooks.json":
+                name = "self: %s schema" % hooks_file
+                if not isinstance(data, dict):
+                    _check(results, FAIL, name, "root must be an object")
+                else:
+                    unexpected = sorted(k for k in data if k != "hooks")
+                    if unexpected:
+                        _check(results, FAIL, name,
+                               "unexpected root key(s): %s"
+                               % ", ".join(unexpected))
+                    elif "hooks" not in data:
+                        _check(results, FAIL, name,
+                               "missing root key(s): hooks")
+                    elif not isinstance(data["hooks"], dict):
+                        _check(results, FAIL, name,
+                               "hooks must be an object")
+                    else:
+                        _check(results, OK, name, "root keys: hooks")
         else:
             _check(results, WARN, "self: %s" % hooks_file, "missing")
     # Unresolved template placeholders in the repo's own generated state
