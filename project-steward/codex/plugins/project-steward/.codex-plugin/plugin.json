@@ -1,6 +1,6 @@
 {
   "name": "project-steward",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Cross-agent project stewardship: interactive init, repo-resident progress tracking, crash-resilient session handoff/resume, and task-backend guidance.",
   "author": {
     "name": "Shuhan Wang"
