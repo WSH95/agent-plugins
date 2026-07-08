@@ -1,0 +1,6 @@
+{
+  "schema_version": 1,
+  "name": "$backend_name",
+  "adopted_at": "$created_at",
+  "notes": "Set at init; run `project-steward backend recommend` to revisit."
+}

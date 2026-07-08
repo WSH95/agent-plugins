@@ -1,0 +1,20 @@
+{
+  "name": "project-steward",
+  "version": "0.2.3",
+  "description": "Cross-agent project stewardship: interactive init (AGENTS.md + CLAUDE.md), repo-resident progress tracking, crash-resilient cross-tool session handoff/resume, and a task-backend broker. State lives in .project-steward/ and travels via git. Native Windows requires the project-steward CLI on PATH (pipx install project-steward); POSIX hosts run hooks via a bundled python3 shim fallback.",
+  "author": {
+    "name": "Shuhan Wang"
+  },
+  "homepage": "https://github.com/WSH95/project-steward",
+  "license": "MIT",
+  "keywords": [
+    "project-management",
+    "handoff",
+    "resume",
+    "agents-md",
+    "codex",
+    "progress"
+  ],
+  "commands": "./commands",
+  "skills": "./skills"
+}

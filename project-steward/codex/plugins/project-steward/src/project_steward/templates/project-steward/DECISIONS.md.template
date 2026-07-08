@@ -1,0 +1,8 @@
+# Decisions (ADR-lite, append-only)
+
+## 0001 — $created_at — Adopt Project Steward
+
+**Context**: The project needs durable, cross-agent continuity.
+**Decision**: Manage state in `.project-steward/` with AGENTS.md as the
+canonical instruction file and CLAUDE.md as a thin Claude Code adapter.
+**Consequences**: Sessions are resumable across tools and devices via git.

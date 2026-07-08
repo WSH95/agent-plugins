@@ -1,0 +1,22 @@
+# $project_name — project charter
+
+$one_liner
+
+- Created: $created_at (Project Steward $steward_version)
+- Primary language/stack: $primary_language
+
+## Goals
+
+- TODO: what success looks like.
+
+## Non-goals
+
+- TODO: explicitly out of scope.
+
+## Users / stakeholders
+
+- TODO.
+
+## Constraints
+
+- TODO: platform, performance, security/privacy, licensing.

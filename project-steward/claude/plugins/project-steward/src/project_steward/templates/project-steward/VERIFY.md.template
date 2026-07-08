@@ -1,0 +1,12 @@
+# Verification
+
+How to check the project is healthy. Agents run these before claiming
+"validated" in HANDOFF.md.
+
+| Check | Command | Expected |
+| --- | --- | --- |
+| Build | `$build_command` | exits 0 |
+| Tests | `$test_command` | all pass |
+| Lint | `$lint_command` | clean |
+
+Last verified: (never) — update this line after each full run.

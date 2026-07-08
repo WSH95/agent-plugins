@@ -1,0 +1,74 @@
+{
+  "description": "Project Steward lifecycle hooks for Claude Code. Primary command requires the CLI on PATH (pipx install project-steward); the || fallback runs the bundled zero-install shim on POSIX shells. On native Windows, install the CLI — the fallback's ${CLAUDE_PLUGIN_ROOT} expansion is POSIX-only.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "project-steward hook session-start --agent claude || python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/project_steward_hook.py\" session-start --agent claude",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "project-steward hook post-tool-use --agent claude || python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/project_steward_hook.py\" post-tool-use --agent claude",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "project-steward hook user-prompt-submit --agent claude || python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/project_steward_hook.py\" user-prompt-submit --agent claude",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "project-steward hook stop --agent claude || python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/project_steward_hook.py\" stop --agent claude",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "manual|auto",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "project-steward hook pre-compact --agent claude || python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/project_steward_hook.py\" pre-compact --agent claude",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "project-steward hook session-end --agent claude || python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/project_steward_hook.py\" session-end --agent claude",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

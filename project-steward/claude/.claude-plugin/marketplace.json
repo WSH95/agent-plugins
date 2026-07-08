@@ -1,0 +1,17 @@
+{
+  "name": "project-steward-marketplace",
+  "owner": {
+    "name": "Shuhan Wang"
+  },
+  "metadata": {
+    "description": "Marketplace for the Project Steward plugin",
+    "version": "0.2.3"
+  },
+  "plugins": [
+    {
+      "name": "project-steward",
+      "source": "./plugins/project-steward",
+      "description": "Cross-agent project stewardship toolkit (init, progress, handoff/resume, backend broker)."
+    }
+  ]
+}

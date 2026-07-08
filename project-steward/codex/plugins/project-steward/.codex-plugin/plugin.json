@@ -1,0 +1,36 @@
+{
+  "name": "project-steward",
+  "version": "0.2.3",
+  "description": "Cross-agent project stewardship: interactive init, repo-resident progress tracking, crash-resilient session handoff/resume, and task-backend guidance.",
+  "author": {
+    "name": "Shuhan Wang"
+  },
+  "homepage": "https://github.com/WSH95/project-steward",
+  "license": "MIT",
+  "keywords": [
+    "project-management",
+    "handoff",
+    "resume",
+    "agents-md",
+    "codex",
+    "progress"
+  ],
+  "repository": "https://github.com/WSH95/project-steward",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Project Steward",
+    "shortDescription": "Repo-resident project memory, handoff, and progress tracking.",
+    "longDescription": "Project Steward helps coding agents initialize durable project memory, resume from repository state, keep progress current, and hand off cleanly across Claude Code, Codex, and other agents.",
+    "developerName": "Shuhan Wang",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Resume this Project Steward project.",
+      "Initialize this repo with Project Steward.",
+      "Checkpoint current Project Steward progress."
+    ]
+  }
+}

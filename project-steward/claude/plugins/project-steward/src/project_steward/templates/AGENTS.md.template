@@ -1,0 +1,27 @@
+# $project_name
+
+$one_liner
+
+Primary language/stack: $primary_language.
+
+## Source of truth
+
+- Project charter: `.project-steward/PROJECT.md`
+- Milestones and tasks: `.project-steward/PLAN.md` (see the Task backend
+  block below if an external backend owns tasks)
+- Current state and next steps: `.project-steward/HANDOFF.md`
+- History: `.project-steward/PROGRESS.md`; decisions: `DECISIONS.md`;
+  open questions: `QUESTIONS.md`; risks: `RISKS.md`;
+  validation: `VERIFY.md`
+
+## Conventions
+
+- Keep this file concise (< 300 lines). It is instructions, not a log.
+- Volatile state belongs under `.project-steward/`, never here.
+
+## Git policy
+
+- Commit at semantic boundaries using Conventional Commits; include
+  `.project-steward/` in the same commit.
+- Never push, force-push, or rewrite published history without explicit
+  user approval.

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agent Artifact Maintainer"
+  short_description: "Maintain agent skill and plugin projects"
+  default_prompt: "Use $agent-artifact-maintainer to organize this agent skill or plugin development project."

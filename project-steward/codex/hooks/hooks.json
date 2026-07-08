@@ -1,0 +1,51 @@
+{
+  "description": "Project Steward lifecycle hooks for Codex. Copy this file to <repo>/.codex/hooks.json (or merge into ~/.codex/hooks.json). Requires: (1) `project-steward` CLI installed on PATH, (2) hooks enabled in Codex config via the canonical features.hooks setting. Non-managed hooks must be reviewed and trusted in /hooks; see codex/INSTALL.md for the fallback protocol.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "project-steward hook session-start --agent codex",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "project-steward hook post-tool-use --agent codex",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "project-steward hook user-prompt-submit --agent codex",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "project-steward hook stop --agent codex",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}
