@@ -1,0 +1,7 @@
+# Project-scoped Codex configuration for the review panel.
+# Keeps subagent fan-out predictable: five reviewers in parallel, no nesting.
+# See https://developers.openai.com/codex/subagents
+
+[agents]
+max_threads = 5
+max_depth = 1

@@ -1,0 +1,17 @@
+{
+  "name": "paperforge-marketplace",
+  "owner": {
+    "name": "Shuhan Wang"
+  },
+  "metadata": {
+    "description": "Marketplace for the Paperforge plugin",
+    "version": "0.2.0"
+  },
+  "plugins": [
+    {
+      "name": "paperforge",
+      "source": "./plugins/paperforge",
+      "description": "Agent-native academic paper-writing kit: 8 skills (workspace setup, intake, outline, draft, related work, polish, review panel, revise) plus per-paper template and scaffold scripts."
+    }
+  ]
+}

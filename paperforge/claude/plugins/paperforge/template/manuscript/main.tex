@@ -1,0 +1,47 @@
+% =========================================================================
+% Venue-agnostic scaffold, journal-capable by default. Conference and journal
+% papers are both first-class; the section architecture is set from the venue/
+% paper-type profile at intake/outline. Swap the documentclass for the venue's
+% own class before submission (venue class files are distributed by each venue):
+%   T-RO / RA-L : \documentclass[journal]{IEEEtran}   + \bibliographystyle{IEEEtran}
+%   Sci Robotics: AAAS author kit — Results/Discussion BEFORE Materials and
+%                 Methods (see the significance-first note in the
+%                 paper-draft-section references/section-protocols.md)
+%   ICRA/IROS   : \documentclass[conference]{IEEEtran}  (or ieeeconf)
+%   CoRL        : corl-style files from the CoRL author kit
+%   NeurIPS     : neurips style file from the author kit
+% Keep the section \input structure identical so drafts survive the swap. A
+% conference short paper merges Results+Discussion into one Experiments section
+% and drops the \input{sections/5_discussion} line (paper-outline does this).
+% =========================================================================
+\documentclass[10pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsfonts,bm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage[colorlinks=true,allcolors=blue]{hyperref}
+\usepackage{xcolor}
+
+\input{macros}
+
+\title{\todo{Working title}}
+\author{Anonymous Authors}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\input{sections/0_abstract}
+\end{abstract}
+
+\input{sections/1_introduction}
+\input{sections/2_related_work}
+\input{sections/3_method}
+\input{sections/4_results}
+\input{sections/5_discussion}
+\input{sections/6_conclusion}
+
+\bibliographystyle{plain} % swap for the venue's style (e.g., IEEEtran)
+\bibliography{refs}
+
+\end{document}

@@ -1,0 +1,20 @@
+% Single source of truth for notation. Define every recurring symbol here and
+% use the macro in prose/math, so renaming a symbol is a one-line change and
+% the consistency checker stays meaningful.
+
+% --- workflow ---
+\newcommand{\todo}[1]{\textcolor{red}{[TODO: #1]}}
+
+% --- RL / control notation (adjust per project) ---
+\newcommand{\state}{\bm{s}}
+\newcommand{\obs}{\bm{o}}
+\newcommand{\act}{\bm{a}}
+\newcommand{\policy}{\pi_{\theta}}
+\newcommand{\vfun}{V_{\phi}}
+\newcommand{\reward}{r}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\given}{\,\vert\,}
+
+% --- formatting helpers ---
+\newcommand{\etal}{\emph{et al.}}
