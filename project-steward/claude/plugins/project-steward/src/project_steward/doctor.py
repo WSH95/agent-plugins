@@ -197,6 +197,49 @@ def _self_checks(root):
             except ValueError as exc:
                 _check(results, FAIL, "self: %s parses" % hooks_file, str(exc))
                 continue
+            if hooks_file == "plugin-src/claude/hooks/hooks.json":
+                name = "self: %s schema" % hooks_file
+                allowed = ("type", "command", "timeout")
+                wrapper_ref = "${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd"
+                problems = []
+                handlers = []
+                if not isinstance(data, dict) or \
+                        not isinstance(data.get("hooks"), dict):
+                    problems.append("root must be an object with `hooks`")
+                else:
+                    unexpected = sorted(
+                        k for k in data if k not in ("description", "hooks"))
+                    if unexpected:
+                        problems.append("unexpected root key(s): %s"
+                                        % ", ".join(unexpected))
+                    for groups in data["hooks"].values():
+                        for group in (groups if isinstance(groups, list)
+                                      else []):
+                            if isinstance(group, dict):
+                                handlers += list(group.get("hooks") or [])
+                for handler in handlers:
+                    if not isinstance(handler, dict):
+                        problems.append("hook entries must be objects")
+                        continue
+                    unknown = sorted(k for k in handler if k not in allowed)
+                    if unknown:
+                        problems.append(
+                            "unsupported hook field(s): %s — Claude Code "
+                            "has no per-OS command variants (ADR 0019)"
+                            % ", ".join(unknown))
+                    command = handler.get("command", "")
+                    if wrapper_ref not in command:
+                        problems.append(
+                            "command must run the wrapper via %s"
+                            % wrapper_ref)
+                    elif not (path.parent / "run-hook.cmd").is_file():
+                        problems.append("hooks/run-hook.cmd is missing")
+                if problems:
+                    _check(results, FAIL, name,
+                           "; ".join(sorted(set(problems))))
+                else:
+                    _check(results, OK, name,
+                           "handlers run hooks/run-hook.cmd")
             if hooks_file == "plugin-src/codex/hooks/hooks.json":
                 name = "self: %s schema" % hooks_file
                 if not isinstance(data, dict):
