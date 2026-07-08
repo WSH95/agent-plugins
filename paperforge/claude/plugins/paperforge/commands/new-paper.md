@@ -18,8 +18,8 @@ you ($ARGUMENTS; ask if missing).
    bash "${CLAUDE_PLUGIN_ROOT}/new-paper.sh" "<destination>"
 
    If the ${CLAUDE_PLUGIN_ROOT} placeholder was not expanded in this text,
-   resolve the newest ~/.claude/plugins/cache/paperforge-marketplace/
-   paperforge/*/ directory and run its new-paper.sh. Never re-implement
+   resolve the newest ~/.claude/plugins/cache/*/paperforge/*/ directory
+   (any marketplace name) and run its new-paper.sh. Never re-implement
    the copy logic yourself.
 3. Relay the script's next steps: optional private remote for
    cross-machine sync; the first prompt "Start the intake interview."; and
