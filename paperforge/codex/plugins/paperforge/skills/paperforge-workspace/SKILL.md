@@ -25,7 +25,9 @@ Use the first available route:
 2. In Claude Code slash commands, use `${CLAUDE_PLUGIN_ROOT}`.
 3. If neither is available, search the installed plugin cache for a directory
    named `paperforge` containing both `new-paper.sh` and `adopt-paper.sh`, then
-   choose the newest matching cache entry.
+   choose the newest matching cache entry (e.g.
+   `~/.claude/plugins/cache/*/paperforge/*/` in Claude Code,
+   `~/.codex/plugins/cache/*/paperforge/*/` in Codex).
 4. If the author is running from a source checkout, use the checkout's `plugin/`
    directory.
 

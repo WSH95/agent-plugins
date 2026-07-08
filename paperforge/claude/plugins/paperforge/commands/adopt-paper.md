@@ -12,8 +12,8 @@ before writing).
    bash "${CLAUDE_PLUGIN_ROOT}/adopt-paper.sh" [--force] "<directory>"
 
    If the ${CLAUDE_PLUGIN_ROOT} placeholder was not expanded in this text,
-   resolve the newest ~/.claude/plugins/cache/paperforge-marketplace/
-   paperforge/*/ directory and run its adopt-paper.sh. Never re-implement
+   resolve the newest ~/.claude/plugins/cache/*/paperforge/*/ directory
+   (any marketplace name) and run its adopt-paper.sh. Never re-implement
    the copy logic yourself. `--force` overwrites scaffolding files with
    timestamped .bak backups — warn the author before using it on a
    workspace whose state/ is already filled in. `--refresh <path>`
