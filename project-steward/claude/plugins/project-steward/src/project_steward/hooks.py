@@ -145,7 +145,7 @@ def _handle_stop(root, agent, payload):
     cooldown_s = int(config.get("auto_handoff_cooldown_min", 45)) * 60
 
     _meta, _body, handoff_mtime = sessions.handoff_meta(root)
-    edits = sessions._activity_lines_newer_than(root, handoff_mtime)
+    edits = sessions.handoff_relevant_activity_count_since(root, handoff_mtime)
     if edits < min_edits:
         return
 
@@ -163,9 +163,11 @@ def _handle_stop(root, agent, payload):
     if mode == "remind":
         _emit({
             "systemMessage": (
-                "Project Steward: %d tool actions since HANDOFF.md was last "
-                "updated. Consider /project-steward:checkpoint or "
-                "`project-steward checkpoint --note ...`." % edits
+                "Project Steward: %d handoff-relevant actions since "
+                "HANDOFF.md was last updated. If project state changed "
+                "materially, refresh HANDOFF.md; otherwise consider "
+                "`project-steward checkpoint --note ...` for a lightweight "
+                "checkpoint." % edits
             )
         })
         return
@@ -174,13 +176,15 @@ def _handle_stop(root, agent, payload):
     _emit({
         "decision": "block",
         "reason": (
-            "Project Steward auto-checkpoint: %d file-touching actions have "
+            "Project Steward auto-checkpoint: %d handoff-relevant actions have "
             "occurred since .project-steward/HANDOFF.md was last updated. "
-            "Before finishing: (1) update HANDOFF.md (Now / In flight / Next "
-            "steps / Blockers) to reflect the current state, (2) append a "
-            "one-line PROGRESS.md entry prefixed with [auto-checkpoint] — or "
-            "run `project-steward checkpoint --note \"...\"` which does both "
-            "— then stop. Keep it brief; do not start new work." % edits
+            "Before finishing: if project state changed materially, update "
+            "HANDOFF.md (Now / In flight / Next steps / Blockers) and append "
+            "a one-line PROGRESS.md entry prefixed with [auto-checkpoint]. "
+            "Otherwise run `project-steward checkpoint --note \"...\"` for a "
+            "lightweight checkpoint; it refreshes checkpoint metadata and "
+            "appends PROGRESS.md. Then stop. Keep it brief; do not start new "
+            "work." % edits
         ),
     })
 

@@ -22,6 +22,54 @@ from .state import (load_config, load_state, parse_front_matter, read_json,
 
 ACTIVITY_ROTATE_AT = 4000
 ACTIVITY_KEEP = 2000
+MUTATING_TOOLS = {
+    "edit",
+    "write",
+    "multiedit",
+    "notebookedit",
+    "apply_patch",
+}
+READ_ONLY_COMMAND_PREFIXES = (
+    "cat ",
+    "codex --version",
+    "command -v ",
+    "diff ",
+    "find ",
+    "git diff",
+    "git log",
+    "git branch --list",
+    "git branch --show-current",
+    "git branch -a",
+    "git branch -r",
+    "git remote -v",
+    "git rev-parse",
+    "git show",
+    "git status",
+    "grep ",
+    "head ",
+    "ls ",
+    "pwd",
+    "python3 -m compileall ",
+    "python3 -m json.tool ",
+    "python3 -m project_steward doctor",
+    "python3 -m project_steward --version",
+    "python3 -m pytest ",
+    "project-steward doctor",
+    "project-steward resume",
+    "project-steward status",
+    "project-steward --version",
+    "pytest ",
+    "rg ",
+    "sed -n ",
+    "tail ",
+    "which ",
+)
+READ_ONLY_COMMAND_EXACT = (
+    "git branch",
+    "git remote",
+    "pwd",
+)
+STEWARD_STATE_MARKER = ".project-steward/"
 
 REQUIRED_HANDOFF_SECTIONS = ["## Now", "## Next steps"]
 RECOMMENDED_HANDOFF_SECTIONS = [
@@ -72,7 +120,8 @@ def record_activity(root, tool, detail=""):
     if record.get("status") == "active":
         record["updated_at"] = utcnow_iso()
         write_json_atomic(_session_file(root), record)
-    line = "%s\t%s\t%s\n" % (utcnow_iso(), tool, (detail or "")[:200].replace("\n", " "))
+    detail_text = (detail or "")[:200].replace("\n", " ")
+    line = "%s\t%s\t%s\n" % (utcnow_iso(), tool, detail_text)
     log_path = runtime_dir(root) / "activity.log"
     try:
         with open(str(log_path), "a", encoding="utf-8", newline="\n") as fh:
@@ -150,6 +199,76 @@ def _activity_lines_newer_than(root, epoch):
     return count
 
 
+def _activity_entries_newer_than(root, epoch):
+    path = runtime_dir(root) / "activity.log"
+    entries = []
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return entries
+    for line in lines:
+        parts = line.split("\t", 2)
+        if len(parts) < 2:
+            continue
+        ts = parts[0]
+        try:
+            lt = time.strptime(ts, "%Y-%m-%dT%H:%M:%SZ")
+        except ValueError:
+            continue
+        if calendar.timegm(lt) <= epoch:
+            continue
+        tool = parts[1]
+        detail = parts[2] if len(parts) > 2 else ""
+        entries.append((tool, detail))
+    return entries
+
+
+def _normalized_command(detail):
+    return " ".join((detail or "").strip().split()).lower()
+
+
+def _strip_env_assignments(command):
+    tokens = command.split()
+    if tokens and tokens[0] == "env":
+        tokens = tokens[1:]
+    while tokens:
+        name, sep, _value = tokens[0].partition("=")
+        if not sep:
+            break
+        if not name.replace("_", "").isalnum():
+            break
+        tokens = tokens[1:]
+    return " ".join(tokens)
+
+
+def activity_is_handoff_relevant(tool, detail=""):
+    """Return True for activity that should pressure a handoff update."""
+    tool_name = (tool or "").strip().lower()
+    detail_text = detail or ""
+    if STEWARD_STATE_MARKER in detail_text.replace("\\", "/"):
+        return False
+    if tool_name in MUTATING_TOOLS:
+        return True
+    if tool_name != "bash":
+        return False
+    command = _strip_env_assignments(_normalized_command(detail_text))
+    if not command:
+        return False
+    if command in READ_ONLY_COMMAND_EXACT:
+        return False
+    for prefix in READ_ONLY_COMMAND_PREFIXES:
+        if command == prefix.rstrip() or command.startswith(prefix):
+            return False
+    return True
+
+
+def handoff_relevant_activity_count_since(root, epoch):
+    return sum(
+        1 for tool, detail in _activity_entries_newer_than(root, epoch)
+        if activity_is_handoff_relevant(tool, detail)
+    )
+
+
 def handoff_meta(root):
     path = state_dir(root) / "HANDOFF.md"
     if not path.is_file():
@@ -188,7 +307,8 @@ def detect_crash_signals(root, runtime_record=None):
             % (runtime.get("agent", "?"), runtime.get("updated_at", "?"))
         )
 
-    edits_after_handoff = _activity_lines_newer_than(root, handoff_mtime)
+    edits_after_handoff = handoff_relevant_activity_count_since(
+        root, handoff_mtime)
     if edits_after_handoff > 0:
         signals.append(
             "%d tool actions were logged locally AFTER the last HANDOFF.md "
