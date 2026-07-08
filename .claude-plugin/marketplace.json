@@ -1,0 +1,16 @@
+{
+  "name": "agent-plugins",
+  "owner": {
+    "name": "WSH95"
+  },
+  "metadata": {
+    "description": "Public marketplace for agent plugins maintained by WSH95"
+  },
+  "plugins": [
+    {
+      "name": "project-steward",
+      "source": "./project-steward/claude/plugins/project-steward",
+      "description": "Cross-agent project stewardship toolkit for project memory, progress tracking, and session handoff."
+    }
+  ]
+}
