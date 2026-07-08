@@ -1,0 +1,17 @@
+#!/usr/bin/env python3
+"""Plugin-local Project Steward launcher for Claude Code."""
+import sys
+from pathlib import Path
+
+
+PLUGIN_ROOT = Path(__file__).resolve().parent.parent
+for SRC in (PLUGIN_ROOT / "src", PLUGIN_ROOT.parent / "src"):
+    if SRC.is_dir():
+        sys.path.insert(0, str(SRC))
+        break
+
+from project_steward.cli import main
+
+
+if __name__ == "__main__":
+    sys.exit(main())

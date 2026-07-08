@@ -1,7 +1,7 @@
 {
   "name": "project-steward",
   "version": "0.3.0",
-  "description": "Cross-agent project stewardship: interactive init (AGENTS.md + CLAUDE.md), repo-resident progress tracking, crash-resilient cross-tool session handoff/resume, and a task-backend broker. State lives in .project-steward/ and travels via git. Native Windows requires the project-steward CLI on PATH (pipx install project-steward); POSIX hosts run hooks via a bundled python3 shim fallback.",
+  "description": "Cross-agent project stewardship: interactive init (AGENTS.md + CLAUDE.md), repo-resident progress tracking, crash-resilient cross-tool session handoff/resume, and a task-backend broker. State lives in .project-steward/ and travels via git. Claude hooks use a bundled pure-Python launcher when Python is available, then fall back to an installed project-steward CLI.",
   "author": {
     "name": "Shuhan Wang"
   },

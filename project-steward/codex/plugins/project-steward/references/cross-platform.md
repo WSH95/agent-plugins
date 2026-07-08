@@ -25,19 +25,23 @@
 
 ## Hook commands
 
-`project-steward hook <event> --agent <x>` is the canonical hook command:
-a console script on PATH works identically under sh, cmd, and PowerShell,
-with no env-var expansion differences. The POSIX-only zero-install
-fallback (`python3 .../hooks/scripts/project_steward_hook.py`) is emitted
-in the generated Claude Code payload for un-pip-installed plugin use; on
-native Windows, install the CLI (pipx/pip). If Codex hooks are
-unavailable, disabled, or untrusted in a client, the AGENTS.md protocol +
-skills/prompts + manual CLI carry the behavior there.
+`project-steward hook <event> --agent <x>` is the canonical hook command.
+The generated Claude Code payload includes a pure-Python
+`bin/project-steward` launcher that prepends the plugin-local `src/`
+directory and calls the same CLI entrypoint. Claude hooks run that
+launcher with POSIX `python3` commands and Windows `py -3` / `python`
+variants, then fall back to a console script on PATH. No hook installs
+dependencies, downloads a runtime, or relies on native binaries. Codex
+hooks still use the console script because Codex does not install the
+Claude payload; if Codex hooks are unavailable, disabled, or untrusted in
+a client, the AGENTS.md protocol + skills/prompts + manual CLI carry the
+behavior there.
 
 ## Known Windows notes
 
 - Claude Code hook execution on native Windows has shell quirks; the
-  console-script command avoids `${VAR}` expansion entirely.
+  generated payload uses `commandWindows` with `py -3`, then `python`,
+  then an installed console-script fallback.
 - `git` must be on PATH (Git for Windows is fine; Git Bash NOT required).
 - PowerShell examples: `pipx install .` (from a checkout — not yet on
   PyPI); `project-steward resume`; paths may use either separator.

@@ -1,5 +1,5 @@
 {
-  "description": "Project Steward lifecycle hooks for Claude Code. Primary command requires the CLI on PATH (pipx install project-steward); the || fallback runs the bundled zero-install shim on POSIX shells. On native Windows, install the CLI — the fallback's ${CLAUDE_PLUGIN_ROOT} expansion is POSIX-only.",
+  "description": "Project Steward lifecycle hooks for Claude Code. Hooks prefer the bundled pure-Python launcher at ${CLAUDE_PLUGIN_ROOT}/bin/project-steward, fall back to an installed project-steward CLI, and never install dependencies automatically.",
   "hooks": {
     "SessionStart": [
       {
@@ -7,7 +7,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "project-steward hook session-start --agent claude || python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/project_steward_hook.py\" session-start --agent claude",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/bin/project-steward\" hook session-start --agent claude || project-steward hook session-start --agent claude || true",
+            "commandWindows": "py -3 \"${CLAUDE_PLUGIN_ROOT}\\bin\\project-steward\" hook session-start --agent claude; if ($LASTEXITCODE -ne 0) { python \"${CLAUDE_PLUGIN_ROOT}\\bin\\project-steward\" hook session-start --agent claude }; if ($LASTEXITCODE -ne 0) { project-steward hook session-start --agent claude }; if ($LASTEXITCODE -ne 0) { exit 0 }",
             "timeout": 15
           }
         ]
@@ -19,7 +20,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "project-steward hook post-tool-use --agent claude || python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/project_steward_hook.py\" post-tool-use --agent claude",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/bin/project-steward\" hook post-tool-use --agent claude || project-steward hook post-tool-use --agent claude || true",
+            "commandWindows": "py -3 \"${CLAUDE_PLUGIN_ROOT}\\bin\\project-steward\" hook post-tool-use --agent claude; if ($LASTEXITCODE -ne 0) { python \"${CLAUDE_PLUGIN_ROOT}\\bin\\project-steward\" hook post-tool-use --agent claude }; if ($LASTEXITCODE -ne 0) { project-steward hook post-tool-use --agent claude }; if ($LASTEXITCODE -ne 0) { exit 0 }",
             "timeout": 10
           }
         ]
@@ -30,7 +32,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "project-steward hook user-prompt-submit --agent claude || python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/project_steward_hook.py\" user-prompt-submit --agent claude",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/bin/project-steward\" hook user-prompt-submit --agent claude || project-steward hook user-prompt-submit --agent claude || true",
+            "commandWindows": "py -3 \"${CLAUDE_PLUGIN_ROOT}\\bin\\project-steward\" hook user-prompt-submit --agent claude; if ($LASTEXITCODE -ne 0) { python \"${CLAUDE_PLUGIN_ROOT}\\bin\\project-steward\" hook user-prompt-submit --agent claude }; if ($LASTEXITCODE -ne 0) { project-steward hook user-prompt-submit --agent claude }; if ($LASTEXITCODE -ne 0) { exit 0 }",
             "timeout": 10
           }
         ]
@@ -41,7 +44,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "project-steward hook stop --agent claude || python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/project_steward_hook.py\" stop --agent claude",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/bin/project-steward\" hook stop --agent claude || project-steward hook stop --agent claude || true",
+            "commandWindows": "py -3 \"${CLAUDE_PLUGIN_ROOT}\\bin\\project-steward\" hook stop --agent claude; if ($LASTEXITCODE -ne 0) { python \"${CLAUDE_PLUGIN_ROOT}\\bin\\project-steward\" hook stop --agent claude }; if ($LASTEXITCODE -ne 0) { project-steward hook stop --agent claude }; if ($LASTEXITCODE -ne 0) { exit 0 }",
             "timeout": 15
           }
         ]
@@ -53,7 +57,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "project-steward hook pre-compact --agent claude || python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/project_steward_hook.py\" pre-compact --agent claude",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/bin/project-steward\" hook pre-compact --agent claude || project-steward hook pre-compact --agent claude || true",
+            "commandWindows": "py -3 \"${CLAUDE_PLUGIN_ROOT}\\bin\\project-steward\" hook pre-compact --agent claude; if ($LASTEXITCODE -ne 0) { python \"${CLAUDE_PLUGIN_ROOT}\\bin\\project-steward\" hook pre-compact --agent claude }; if ($LASTEXITCODE -ne 0) { project-steward hook pre-compact --agent claude }; if ($LASTEXITCODE -ne 0) { exit 0 }",
             "timeout": 10
           }
         ]
@@ -64,7 +69,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "project-steward hook session-end --agent claude || python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/scripts/project_steward_hook.py\" session-end --agent claude",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/bin/project-steward\" hook session-end --agent claude || project-steward hook session-end --agent claude || true",
+            "commandWindows": "py -3 \"${CLAUDE_PLUGIN_ROOT}\\bin\\project-steward\" hook session-end --agent claude; if ($LASTEXITCODE -ne 0) { python \"${CLAUDE_PLUGIN_ROOT}\\bin\\project-steward\" hook session-end --agent claude }; if ($LASTEXITCODE -ne 0) { project-steward hook session-end --agent claude }; if ($LASTEXITCODE -ne 0) { exit 0 }",
             "timeout": 10
           }
         ]

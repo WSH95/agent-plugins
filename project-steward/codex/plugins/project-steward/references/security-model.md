@@ -28,9 +28,12 @@ Hooks are an execution surface. Claude Code plugin hooks ship with the
 plugin you chose to install; Codex requires the experimental flag and
 (for plugin-bundled hooks) an explicit trust review. Project Steward's
 hooks: never install dependencies, never touch the network, never edit
-AGENTS.md/CLAUDE.md, never read secrets, always exit 0. Inspect them:
-`plugin-src/src/project_steward/hooks.py` (~250 lines) and the canonical
-JSON configs under `plugin-src/claude/hooks/` and `plugin-src/codex/hooks/`.
+AGENTS.md/CLAUDE.md, never read secrets, always exit 0. The Claude
+payload's `bin/project-steward` is a small Python launcher into the
+plugin-local source tree, not a native binary or bundled runtime. Inspect
+it with `plugin-src/src/project_steward/hooks.py` (~250 lines) and the
+canonical JSON configs under `plugin-src/claude/hooks/` and
+`plugin-src/codex/hooks/`.
 
 ## Repo-local instructions
 
