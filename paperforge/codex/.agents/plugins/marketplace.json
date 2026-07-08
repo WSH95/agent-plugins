@@ -1,0 +1,21 @@
+{
+  "name": "paperforge-marketplace",
+  "description": "Marketplace exposing the Paperforge plugin to Codex.",
+  "interface": {
+    "displayName": "Paperforge"
+  },
+  "plugins": [
+    {
+      "name": "paperforge",
+      "source": {
+        "source": "local",
+        "path": "./plugins/paperforge"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

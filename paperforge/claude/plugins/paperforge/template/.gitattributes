@@ -1,0 +1,7 @@
+# Keep the workspace's executable text (bash, python, make) on LF so a
+# Windows clone cannot break `make check` / the scripts. Added by the
+# Paperforge template.
+* text=auto
+*.sh text eol=lf
+*.py text eol=lf
+Makefile text eol=lf

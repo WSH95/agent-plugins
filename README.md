@@ -19,6 +19,7 @@ codex plugin marketplace add https://github.com/WSH95/agent-plugins
 
 ## Plugins
 
+- [Paperforge](#paperforge-use-case) - academic paper writing, mock review, revision, and paper workspace scaffolding.
 - [Project Steward](#project-steward-use-case) — cross-agent project
   stewardship plugin for Claude Code, Codex, and other coding agents.
 
@@ -72,6 +73,21 @@ Example interactions:
   decision, or before ending a session.
 - Ask agent to wrap up a session with a zero-context handoff for the next
   agent.
+
+#### Paperforge Use Case
+
+Use Paperforge when writing or revising an academic paper with an LLM agent.
+It provides portable skills for intake, outlining, grounded drafting, related
+work, polishing, mock peer review, and revision. It also includes a paper
+workspace template with LaTeX, durable project state, reviewer personas, and
+scaffold scripts for creating or adopting paper repositories.
+
+Example interactions:
+
+- Ask agent to create a new Paperforge paper workspace.
+- Ask agent to adopt an existing LaTeX repository in place.
+- Start the intake interview for a new paper.
+- Run a mock review panel before submission.
 
 ## License
 

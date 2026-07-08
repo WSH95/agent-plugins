@@ -11,6 +11,11 @@
       "name": "project-steward",
       "source": "./project-steward/claude/plugins/project-steward",
       "description": "Cross-agent project stewardship toolkit for project memory, progress tracking, and session handoff."
+    },
+    {
+      "name": "paperforge",
+      "source": "./paperforge/claude/plugins/paperforge",
+      "description": "Agent-native academic paper-writing kit and per-paper workspace template."
     }
   ]
 }
