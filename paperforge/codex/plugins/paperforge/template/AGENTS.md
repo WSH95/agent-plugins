@@ -80,8 +80,13 @@ Each stage has a dedicated skill. Prefer invoking the skill over improvising:
 | Draft a section | `paper-draft-section` | `manuscript/sections/*.tex` |
 | Related work | `paper-related-work` | `state/related-work-map.md`, Sec. II, `refs.bib` |
 | Polish / line edit | `paper-polish` | edited sections + `scripts/check_paper.py` report |
-| Mock peer review | `paper-review-panel` | `state/reviews/round-N/` |
+| Mock peer review | `paper-review-panel` | `state/reviews/round-N/` (reviews + area-chair meta-review) |
 | Revision / rebuttal | `paper-revise` | revision plan, edits, response letter |
+
+If standalone variants of these skills are also installed (names ending in
+`-standalone`), do not use them in this workspace — even when invoked by
+name out of habit: the table above names the workspace-grounded skill for
+each stage.
 
 ## 6. File map
 
@@ -94,9 +99,12 @@ Each stage has a dedicated skill. Prefer invoking the skill over improvising:
 - `manuscript/` — LaTeX source. `macros.tex` is the single source of truth for notation.
 - `evidence/results.md` — curated experimental numbers; every paper number traces here.
 - `scripts/check_paper.py` — deterministic consistency checker (`make check`).
+- `scripts/check_reviews.py` — deterministic review-round checker (adjudication
+  coverage; run by the panel and revise skills).
 - `scripts/context_packet.py` — bundles project context for plain-chat sessions.
-- `.claude/agents/` and `.codex/agents/` — reviewer personas for Claude Code and
-  Codex; the canonical persona text lives in the `.claude/agents/*.md` files.
+- `.claude/agents/` and `.codex/agents/` — reviewer personas and the
+  area-chair adjudicator for Claude Code and Codex; the canonical persona
+  text lives in the `.claude/agents/*.md` files.
 
 ## 7. Writing conventions
 
@@ -112,7 +120,9 @@ Each stage has a dedicated skill. Prefer invoking the skill over improvising:
 Independent reviews are only meaningful if reviewers cannot see each other. When acting
 as a reviewer or orchestrating the panel: reviewers read **only** `manuscript/` (like a
 real reviewer, they see the paper, not the lab notebook), and never read other reviews
-from the current round. Details are in the `paper-review-panel` skill.
+from the current round. The meta-review is written by the independent
+`area-chair` persona in a fresh context — the drafting session saves it
+verbatim and never edits it. Details are in the `paper-review-panel` skill.
 
 ## 9. Build and check
 

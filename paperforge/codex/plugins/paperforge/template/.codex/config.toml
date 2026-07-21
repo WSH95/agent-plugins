@@ -1,5 +1,6 @@
 # Project-scoped Codex configuration for the review panel.
-# Keeps subagent fan-out predictable: five reviewers in parallel, no nesting.
+# Keeps subagent fan-out predictable: five reviewers in parallel, no nesting;
+# the area chair runs afterwards as a single agent.
 # See https://developers.openai.com/codex/subagents
 
 [agents]

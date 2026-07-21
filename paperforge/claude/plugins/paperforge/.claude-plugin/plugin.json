@@ -1,6 +1,6 @@
 {
   "name": "paperforge",
-  "version": "0.2.1",
+  "version": "0.2.3",
   "description": "Agent-native paper-writing system: structured intake, claims-to-evidence outlining, grounded drafting, verified citations, polish passes, a 5-reviewer mock panel, and revision/rebuttal — plus commands that scaffold a paper workspace from the bundled template. Works alongside Project Steward (the template's AGENTS.md §12 defines the composition).",
   "author": {
     "name": "Shuhan Wang"

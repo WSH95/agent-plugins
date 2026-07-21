@@ -12,7 +12,12 @@ agent-ownable items, and (3) a response letter when reviews are real.
 
 Read every review in `state/reviews/round-N/` plus `meta-review.md`. For real venue
 reviews: save them verbatim into the same round structure first (one file per
-reviewer) so the pipeline is identical.
+reviewer) so the pipeline is identical, then offer to run the area-chair
+adjudication over them (the `area-chair` persona from `paper-review-panel` —
+same pipeline), which yields evidence-checked verdicts and ready rebuttal
+material. Once `meta-review.md` exists, run `python3 scripts/check_reviews.py N`
+(mock rounds: re-run it here as a cheap gate). If the author declines the
+adjudication, skip the checker and plan from the raw reviews.
 
 ## 2. Plan — `state/reviews/round-N/revision-plan.md`
 
@@ -28,9 +33,19 @@ cross-references):
   wrong — check against `evidence/` and `state/project.md`; reviewers can be
   mistaken, and the correct response is a respectful, evidence-backed rebuttal,
   not a concession).
+- When the meta-review carries an Adjudication table, seed Priority and Owner
+  from its verdicts: `confirmed` majors → P0/P1 (follow the area chair's
+  top-5 ranking); `partly-confirmed` → P1 with a note narrowing the scope;
+  `refuted` → P2 with Owner `discuss` and the area chair's evidence pointer
+  prefilled in Action (a refuted point is rebuttal material — never silently
+  drop the row); `judgment-call` → `author` or `discuss` weighted by how many
+  reviewers raised it; `out-of-scope` → P2 with a venue note.
 
-Walk the plan with the author and get sign-off before editing anything. Author-owned
-items go under Open questions in `state/progress.md` with what is needed.
+Copy every item under the meta-review's "Points for the author" into Open
+questions in `state/progress.md` — those are the area chair's contested calls,
+and the author is the final arbiter. Walk the plan with the author and get
+sign-off before editing anything. Author-owned items go under Open questions
+in `state/progress.md` with what is needed.
 
 ## 3. Execute (agent-owned items)
 
@@ -48,6 +63,9 @@ followed by the response:
   ("Revised in Sec. IV-B, para. 2") → evidence if applicable.
 - Tone: professional, non-defensive, specific. Concede real points plainly;
   rebut wrong ones with evidence, never with volume.
+- When rebutting a point the meta-review refuted, cite the area chair's
+  evidence pointer (Sec./Fig./E#) — rebut with the located evidence, not
+  with restated opinion.
 - Never claim a change that was not actually made — cross-check every "we have
   revised" against the diff.
 
