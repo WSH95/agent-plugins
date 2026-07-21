@@ -96,4 +96,4 @@ done
 
 echo
 echo "Panel complete: $(find "${OUTDIR}" -mindepth 1 -maxdepth 1 | wc -l) review file(s) in state/reviews/round-${ROUND}/."
-echo "Next: ask the agent to run the meta-review step of the paper-review-panel skill."
+echo "Next: ask the agent to run the area-chair adjudication (meta-review) step of the paper-review-panel skill."

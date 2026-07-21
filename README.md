@@ -19,9 +19,9 @@ codex plugin marketplace add https://github.com/WSH95/agent-plugins
 
 ## Plugins
 
-- [Paperforge](#paperforge-use-case) - academic paper writing, mock review, revision, and paper workspace scaffolding.
 - [Project Steward](#project-steward-use-case) — cross-agent project
   stewardship plugin for Claude Code, Codex, and other coding agents.
+- [Paperforge](#paperforge-use-case) - academic paper writing, mock review, revision, and paper workspace scaffolding.
 
 ### Use Case
 
