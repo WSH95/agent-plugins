@@ -5,12 +5,13 @@
 # temporary directory that contains ONLY a copy of manuscript/ — so reviewers
 # physically cannot read state/, evidence/, or other reviews, regardless of
 # tool flags or prompt compliance. This is the strict-isolation path; inside
-# Claude Code or Codex you can instead let the paper-review-panel skill spawn
-# native subagents (convenient, isolation-by-instruction).
+# Claude Code, Codex, or Grok Build you can instead let the paper-review-panel
+# skill spawn native subagents (convenient, isolation-by-instruction).
 #
 # Usage (from the repository root):
 #   BACKEND=claude scripts/review_panel.sh 1     # round 1 via `claude -p`
 #   BACKEND=codex  scripts/review_panel.sh 2     # round 2 via `codex exec`
+#   BACKEND=grok   scripts/review_panel.sh 1     # round 1 via `grok -p`
 #   BRIEFING=1 BACKEND=claude scripts/review_panel.sh 3
 #       # briefed panel: also copies state/related-work/briefs/ (source-verified
 #       # one-pagers on the closest prior work) into each reviewer's directory
@@ -20,8 +21,8 @@
 # venue; they still never see state/ itself.
 #
 # Note: CLI flags evolve. If an invocation fails, check `claude --help` /
-# `codex --help` and adjust the two backend cases below. The temp-directory
-# isolation does not depend on any flag.
+# `codex --help` / `grok --help` and adjust the backend cases below. The
+# temp-directory isolation does not depend on any flag.
 
 set -euo pipefail
 
@@ -86,8 +87,19 @@ for persona in "${AGENTS_DIR}"/reviewer-*.md; do
             # local codex version does not support it.
             ( cd "${workdir}" && codex exec --sandbox read-only "${prompt}" ) > "${out}"
             ;;
+        grok)
+            # Allowlist read-only tools; `--disallowed-tools Agent` blocks
+            # nested subagents. Flag names follow `grok --help` / the Grok
+            # Build headless guide (`run_terminal_cmd`, not `bash`).
+            ( cd "${workdir}" && grok -p "${prompt}" \
+                --verbatim --no-plan \
+                --tools "read_file,grep,list_dir" \
+                --disallowed-tools "Agent" \
+                --cwd "${workdir}" \
+            ) > "${out}"
+            ;;
         *)
-            echo "Unknown BACKEND='${BACKEND}' (use claude|codex)" >&2; exit 1
+            echo "Unknown BACKEND='${BACKEND}' (use claude|codex|grok)" >&2; exit 1
             ;;
     esac
 

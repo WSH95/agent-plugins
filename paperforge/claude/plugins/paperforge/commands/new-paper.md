@@ -15,12 +15,16 @@ you ($ARGUMENTS; ask if missing).
    detected, or a no-channel warning — relay that warning to the author).
 2. Run the bundled script (the single source of scaffolding logic):
 
-   bash "${CLAUDE_PLUGIN_ROOT}/new-paper.sh" "<destination>"
+   bash "${GROK_PLUGIN_ROOT}/new-paper.sh" "<destination>"
 
-   If the ${CLAUDE_PLUGIN_ROOT} placeholder was not expanded in this text,
-   resolve the newest ~/.claude/plugins/cache/*/paperforge/*/ directory
-   (any marketplace name) and run its new-paper.sh. Never re-implement
-   the copy logic yourself.
+   or, when that variable is empty, `"${CLAUDE_PLUGIN_ROOT}/new-paper.sh"`.
+   If neither ${GROK_PLUGIN_ROOT} nor ${CLAUDE_PLUGIN_ROOT} was expanded
+   in this text, resolve the newest directory named `paperforge` that
+   contains both `new-paper.sh` and `adopt-paper.sh` under
+   `~/.grok/installed-plugins/` or `~/.grok/plugins/` (Grok Build),
+   `~/.claude/plugins/cache/*/paperforge/*/` (Claude Code, any
+   marketplace), or `~/.codex/plugins/cache/*/paperforge/*/` (Codex),
+   then run its new-paper.sh. Never re-implement the copy logic yourself.
 3. Relay the script's next steps: optional private remote for
    cross-machine sync; the first prompt "Start the intake interview."; and
    the optional Project Steward init (workspace AGENTS.md §12 has the

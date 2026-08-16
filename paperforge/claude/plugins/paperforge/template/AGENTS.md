@@ -103,8 +103,10 @@ each stage.
   coverage; run by the panel and revise skills).
 - `scripts/context_packet.py` — bundles project context for plain-chat sessions.
 - `.claude/agents/` and `.codex/agents/` — reviewer personas and the
-  area-chair adjudicator for Claude Code and Codex; the canonical persona
-  text lives in the `.claude/agents/*.md` files.
+  area-chair adjudicator. Claude Code and Grok Build discover the
+  `.claude/agents/*.md` files as project agents; Codex uses the
+  `.codex/agents/*.toml` twins. Canonical persona text lives in the
+  `.claude/agents/*.md` files.
 
 ## 7. Writing conventions
 
