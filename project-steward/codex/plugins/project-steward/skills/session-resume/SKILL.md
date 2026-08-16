@@ -1,12 +1,12 @@
 ---
 name: session-resume
-description: Resume work in a Project Steward managed project. Use at the START of any session in a repo containing .project-steward/ (or when the user says "resume", "continue", "where were we", "pick up where we left off", "what's the status", or switches from another tool/device). Reads repo-resident state, recaps last session, detects crashed or unclosed sessions from git evidence and runtime markers, and reconstructs missing handoffs. Never relies on Claude Code or Codex native session history.
+description: Resume work in a Project Steward managed project. Use at the START of any session in a repo containing .project-steward/ (or when the user says "resume", "continue", "where were we", "pick up where we left off", "what's the status", or switches from another tool/device). Reads repo-resident state, recaps last session, detects crashed or unclosed sessions from git evidence and runtime markers, and reconstructs missing handoffs. Never relies on Claude Code, Codex, or Grok native session history. On Grok, invoke as /session-resume or /project-steward:resume — bare /resume is Grok's session picker.
 ---
 
 # Session resume
 
 Continuity comes from files in git, not from any tool's native history.
-The user may arrive from Codex, from another device, or after a crash.
+The user may arrive from Codex, Grok, from another device, or after a crash.
 
 ## 1. Read state (in this order)
 

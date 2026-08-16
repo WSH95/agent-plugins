@@ -1,8 +1,8 @@
 # Session protocol
 
 The contract that makes sessions portable across Claude Code, Codex,
-other agents, and devices. The repository owns continuity; native session
-histories are execution details.
+Grok Build, other agents, and devices. The repository owns continuity;
+native session histories are execution details.
 
 ## State model
 
@@ -44,12 +44,13 @@ Projectforge v0.1 flaw where resume edited HANDOFF.md front matter.)
 Reconstruction uses `git diff`/`git log` since `last_commit` plus runtime
 logs; every rebuilt claim is labeled "(inferred)".
 
-## Stop guard (Claude Code + Codex hooks)
+## Stop guard (Claude Code + Codex + Grok hooks)
 
 If >= `auto_handoff_min_edits` actions occurred since the handoff's last
 update and the cooldown (`auto_handoff_cooldown_min`) passed, the Stop
 hook emits `{"decision": "block", "reason": ...}` once, instructing a
-brief auto-checkpoint. `stop_hook_active` input prevents loops; modes:
-`block` (default) / `remind` (systemMessage only) / `off`. Worst case
-after a hard crash: one cooldown window of work, still journaled in
-runtime logs.
+brief auto-checkpoint. `stop_hook_active` / `stopHookActive` prevent
+loops. Grok session-teardown Stops (`reason` `shutdown` or
+`channel_closed`) are ignored. Modes: `block` (default) / `remind`
+(`systemMessage` only; weaker on Grok) / `off`. Worst case after a hard
+crash: one cooldown window of work, still journaled in runtime logs.

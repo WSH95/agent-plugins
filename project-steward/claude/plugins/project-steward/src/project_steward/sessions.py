@@ -28,6 +28,11 @@ MUTATING_TOOLS = {
     "multiedit",
     "notebookedit",
     "apply_patch",
+    "search_replace",
+}
+SHELL_TOOLS = {
+    "bash",
+    "run_terminal_command",
 }
 READ_ONLY_COMMAND_PREFIXES = (
     "cat ",
@@ -249,7 +254,7 @@ def activity_is_handoff_relevant(tool, detail=""):
         return False
     if tool_name in MUTATING_TOOLS:
         return True
-    if tool_name != "bash":
+    if tool_name not in SHELL_TOOLS:
         return False
     command = _strip_env_assignments(_normalized_command(detail_text))
     if not command:

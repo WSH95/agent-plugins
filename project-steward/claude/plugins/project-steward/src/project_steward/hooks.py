@@ -1,7 +1,8 @@
 """Cross-agent hook dispatcher: `project-steward hook <event> --agent X`.
 
-One Python entry point serves both Claude Code and Codex lifecycle hooks
-(their stdin/stdout JSON contracts are near-identical by design). Events:
+One Python entry point serves Claude Code, Codex, and Grok Build lifecycle
+hooks. Claude/Codex send snake_case stdin; Grok file hooks send camelCase.
+Look up Claude keys first so existing envelopes are unchanged. Events:
 
   session-start        SessionStart      -> inject recap as additionalContext
   post-tool-use        PostToolUse       -> heartbeat + activity log (silent)
@@ -17,6 +18,7 @@ exit 0 (valid for both agents' Stop events), never exit code 2.
 from __future__ import annotations
 
 import json
+import os
 import sys
 import time
 
@@ -30,7 +32,8 @@ WRAP_PHRASES = [
     "stopping for", "stop for today", "stop for now", "end the session",
     "end session", "ending the session", "call it a day", "sign off",
     "signing off", "hand off", "switch to codex",
-    "switch to claude", "switching to", "continue tomorrow",
+    "switch to claude", "switch to grok", "switching to grok",
+    "switching to", "continue tomorrow",
     "pick this up later", "that's all for", "done for today", "i'm leaving",
     "have to go", "gotta go",
 ]
@@ -41,12 +44,36 @@ HARNESS_MARKERS = ("<task-notification>", "<system-reminder>",
                    "<local-command", "<command-name>")
 
 
+# Grok fires an extra observe-only Stop at session teardown. Skip the
+# stale-handoff guard for those reasons only — Claude/Codex often omit
+# `reason`, and requiring `end_turn` would disable their Stop guard.
+_GROK_TEARDOWN_REASONS = ("shutdown", "channel_closed")
+
+
 def _read_stdin_json():
     try:
         raw = sys.stdin.read()
         return json.loads(raw) if raw.strip() else {}
     except Exception:
         return {}
+
+
+def _field(payload, *names, default=None):
+    """Return the first present payload value. Claude/Codex keys first."""
+    for name in names:
+        if name in payload and payload[name] is not None:
+            return payload[name]
+    return default
+
+
+def _resolve_agent(agent):
+    """Map the frozen Claude wrapper `--agent claude` to grok when Grok
+    injected its hook environment. Claude Code and Codex do not set these."""
+    if agent == "claude" and (
+            os.environ.get("GROK_SESSION_ID")
+            or os.environ.get("GROK_HOOK_EVENT")):
+        return "grok"
+    return agent
 
 
 def _emit(obj):
@@ -100,8 +127,10 @@ def _handle_session_start(root, agent, payload):
 def _handle_post_tool_use(root, agent, payload):
     if not is_steward_project(root):
         return
-    tool = payload.get("tool_name", "tool")
-    tool_input = payload.get("tool_input", {}) or {}
+    tool = _field(payload, "tool_name", "toolName", default="tool")
+    tool_input = _field(payload, "tool_input", "toolInput", default={}) or {}
+    if not isinstance(tool_input, dict):
+        tool_input = {}
     detail = (
         tool_input.get("command")
         or tool_input.get("file_path")
@@ -114,7 +143,8 @@ def _handle_post_tool_use(root, agent, payload):
 def _handle_user_prompt_submit(root, agent, payload):
     if not is_steward_project(root):
         return
-    prompt = (payload.get("prompt") or "").lower()
+    prompt = (_field(payload, "prompt", "user_prompt", "userPrompt",
+                     default="") or "").lower()
     if any(marker in prompt for marker in HARNESS_MARKERS):
         return
     if any(phrase in prompt for phrase in WRAP_PHRASES):
@@ -135,7 +165,9 @@ def _stop_guard_state(root):
 def _handle_stop(root, agent, payload):
     if not is_steward_project(root):
         return
-    if payload.get("stop_hook_active"):
+    if _field(payload, "reason") in _GROK_TEARDOWN_REASONS:
+        return
+    if _field(payload, "stop_hook_active", "stopHookActive"):
         return  # loop guard: this turn was already continued by a Stop hook
     config = load_config(root).get("session", {})
     mode = str(config.get("auto_handoff_mode", "block")).lower()
@@ -227,7 +259,7 @@ def main(argv=None):
         root = find_project_root(cwd if isinstance(cwd, str) and cwd else None)
         handler = HANDLERS.get(event)
         if handler is not None:
-            handler(root, agent, payload)
+            handler(root, _resolve_agent(agent), payload)
     except Exception:
         # Hooks must never break the agent loop.
         pass

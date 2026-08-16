@@ -1,6 +1,6 @@
 ---
 name: agent-artifact-maintainer
-description: Use when developing, reorganizing, packaging, or publishing agent skills/plugins; when skill or plugin repos have duplicated payload folders, messy layouts, missing build/dist scripts, unclear Claude/Codex distribution paths, or need PR publishing into agent-skills or agent-plugins.
+description: Use when developing, reorganizing, packaging, or publishing agent skills/plugins; when skill or plugin repos have duplicated payload folders, messy layouts, missing build/dist scripts, unclear Claude/Codex/Grok distribution paths, or need PR publishing into agent-skills or agent-plugins.
 ---
 
 # Agent Artifact Maintainer
@@ -13,7 +13,7 @@ payloads, keep docs/tests aligned, and publish reviewable PRs.
 
 1. **Survey first**: read tree, manifests, README/install docs, tests, CI,
    existing scripts, and git status. Detect skill-only, plugin-only, or
-   cross-platform Claude/Codex plugin work.
+   cross-platform Claude/Codex plugin work (Grok reuses the Claude payload).
 2. **Clarify intent only where needed**: ask about target agents, target
    repository, checked-in vs generated payloads, and publish destination.
    Do not ask questions the repo already answers.
@@ -40,7 +40,10 @@ scripts. The default target is:
   publishes generated artifacts;
 - scripts under `tools/`;
 - docs that explain how to extract the Claude Code, Codex, or generic skill
-  payload from the development project.
+  payload from the development project. Grok Build installs the Claude
+  payload (`grok plugin marketplace add` on the Claude marketplace
+  directory, then `grok plugin install … --trust`); do not fork a third
+  skills tree.
 
 If a repo already has a clean equivalent layout, keep its names. Fix the
 problem, not the vocabulary.
@@ -82,7 +85,8 @@ without creating a PR.
 - Treat generated install payloads as disposable unless the user explicitly
   says the repo publishes generated files.
 - Keep Claude Code and Codex experiences close, but respect platform
-  differences instead of forcing identical folders.
+  differences instead of forcing identical folders. Grok reuses the
+  Claude plugin directory rather than a third payload.
 - Do not install packages, authenticate `gh`, push branches, or open network
   PR operations without the user's approval.
 - Use Conventional Commits at semantic boundaries; include project-state
