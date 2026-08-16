@@ -1,6 +1,6 @@
 ---
 name: paperforge-workspace
-description: Create, adopt, refresh, or steward-seed a Paperforge paper workspace using the bundled new-paper.sh and adopt-paper.sh scripts. Use whenever the author asks to make a new paper repo, adopt an existing LaTeX repo, refresh Paperforge scaffolding, run Paperforge setup, or use --steward with Paperforge. This is the cross-tool path for Codex and Claude Code; Claude slash commands are convenience aliases only.
+description: Create, adopt, refresh, or steward-seed a Paperforge paper workspace using the bundled new-paper.sh and adopt-paper.sh scripts. Use whenever the author asks to make a new paper repo, adopt an existing LaTeX repo, refresh Paperforge scaffolding, run Paperforge setup, or use --steward with Paperforge. This is the cross-tool path for Claude Code, Codex, and Grok Build; Claude slash commands are convenience aliases only.
 ---
 
 # Paperforge Workspace Setup
@@ -22,12 +22,15 @@ Use the first available route:
 
 1. If the skill loader exposes this `SKILL.md` path, the plugin root is two
    directories above it.
-2. In Claude Code slash commands, use `${CLAUDE_PLUGIN_ROOT}`.
-3. If neither is available, search the installed plugin cache for a directory
-   named `paperforge` containing both `new-paper.sh` and `adopt-paper.sh`, then
-   choose the newest matching cache entry (e.g.
-   `~/.claude/plugins/cache/*/paperforge/*/` in Claude Code,
-   `~/.codex/plugins/cache/*/paperforge/*/` in Codex).
+2. Use `${GROK_PLUGIN_ROOT}` when set (Grok Build), otherwise
+   `${CLAUDE_PLUGIN_ROOT}` (Claude Code slash commands).
+3. If neither variable is available, search the installed plugin trees for a
+   directory named `paperforge` containing both `new-paper.sh` and
+   `adopt-paper.sh`, then choose the newest matching entry:
+   `~/.grok/installed-plugins/` (Grok `plugin install` copies) and
+   `~/.grok/plugins/` (optional extra plugin dirs),
+   `~/.claude/plugins/cache/*/paperforge/*/` (Claude Code),
+   `~/.codex/plugins/cache/*/paperforge/*/` (Codex).
 4. If the author is running from a source checkout, use the checkout's `plugin/`
    directory.
 

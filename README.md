@@ -17,11 +17,12 @@ Codex:
 codex plugin marketplace add https://github.com/WSH95/agent-plugins
 ```
 
-Grok Build (reuses the Project Steward Claude plugin; no third folder):
+Grok Build (reuses each plugin's Claude payload; no third folder):
 
 ```bash
 grok plugin marketplace add https://github.com/WSH95/agent-plugins
 grok plugin install project-steward --trust
+grok plugin install paperforge --trust
 ```
 
 `--trust` is required for lifecycle hooks. Skills and commands can also
@@ -98,6 +99,11 @@ It provides portable skills for intake, outlining, grounded drafting, related
 work, polishing, mock peer review, and revision. It also includes a paper
 workspace template with LaTeX, durable project state, reviewer personas, and
 scaffold scripts for creating or adopting paper repositories.
+
+Grok Build installs the Claude payload from this marketplace
+(`grok plugin install paperforge --trust`). Slash commands are `/new-paper`
+and `/adopt-paper` (qualified `/paperforge:…` if the bare name collides).
+There is no Grok-only skills tree.
 
 Example interactions:
 

@@ -1,6 +1,6 @@
 {
   "name": "paperforge",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "description": "Agent-native paper-writing system: structured intake, claims-to-evidence outlining, grounded drafting, verified citations, polish passes, a 5-reviewer mock panel, and revision/rebuttal — plus commands that scaffold a paper workspace from the bundled template. Works alongside Project Steward (the template's AGENTS.md §12 defines the composition).",
   "author": {
     "name": "Shuhan Wang"
@@ -8,7 +8,7 @@
   "homepage": "https://github.com/WSH95/paperforge",
   "repository": "https://github.com/WSH95/paperforge",
   "license": "MIT",
-  "keywords": ["academic-writing", "latex", "paper", "peer-review", "skills", "codex"],
+  "keywords": ["academic-writing", "latex", "paper", "peer-review", "skills", "codex", "grok"],
   "skills": "./skills/",
   "interface": {
     "displayName": "Paperforge",

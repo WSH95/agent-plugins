@@ -41,13 +41,17 @@ on the authors' private knowledge. Two rules are therefore mandatory:
    venue, and each persona carries venue-calibration rules. Reviewers still
    never see `state/` itself.
 
-## Path A — Claude Code (native subagents)
+## Path A — native project agents (Claude Code and Grok Build)
 
-Invoke every `reviewer-*` subagent defined in `.claude/agents/` **in parallel,
-in the same turn**, each with the prompt: "Review the paper in manuscript/ per
-your instructions; output the full review." Each runs in a fresh isolated
-context and returns its review as its final message. Save each verbatim to
-`state/reviews/round-N/<reviewer-name>.md`.
+Both Claude Code and Grok Build discover the `reviewer-*` files in
+`.claude/agents/` as project agents. Invoke every `reviewer-*` **in
+parallel, in the same turn**, each with the prompt: "Review the paper in
+manuscript/ per your instructions; output the full review." On Grok Build
+that is `spawn_subagent` with `subagent_type` set to the persona name
+(`reviewer-learning`, `reviewer-systems`, `reviewer-theory`,
+`reviewer-stats`, `reviewer-impact`) and `capability_mode: read-only`.
+Each runs in a fresh isolated context and returns its review as its final
+message. Save each verbatim to `state/reviews/round-N/<reviewer-name>.md`.
 
 ## Path B — Codex (native subagent workflow)
 
@@ -63,7 +67,8 @@ the area chair when you invoke the meta-review step.
 
 ## Path C — scripted strict isolation (any CLI, strongest guarantee)
 
-Run `BACKEND=claude scripts/review_panel.sh N` or `BACKEND=codex ...`. Each
+Run `BACKEND=claude scripts/review_panel.sh N`, `BACKEND=codex ...`, or
+`BACKEND=grok ...`. Each
 persona runs as a separate non-interactive CLI call inside a temporary
 directory containing **only a copy of `manuscript/`** — reviewers physically
 cannot read `state/`, `evidence/`, or other reviews. Prefer this path for
@@ -104,11 +109,13 @@ The meta-review is written by the `area-chair` persona in a fresh context —
 never by this session, which drafted the paper and cannot judge it
 independently.
 
-1. Invoke the `area-chair` subagent (Claude Code: native subagent; Codex:
-   "Spawn the area-chair agent"), passing the round number, which path
-   produced the reviews plus its isolation caveats, and any briefed /
-   internal-audit labels. It reads the manuscript first, then the round's
-   reviews, `evidence/results.md`, and `state/project.md`, and rules on every
+1. Invoke the `area-chair` subagent (Claude Code or Grok Build: the
+   `area-chair` project agent from `.claude/agents/`; on Grok,
+   `spawn_subagent` with `subagent_type: area-chair`. Codex: "Spawn the
+   area-chair agent"), passing the round number, which path produced the
+   reviews plus its isolation caveats, and any briefed / internal-audit
+   labels. It reads the manuscript first, then the round's reviews,
+   `evidence/results.md`, and `state/project.md`, and rules on every
    major weakness with an evidence-cited verdict (`confirmed |
    partly-confirmed | refuted | judgment-call | out-of-scope`).
 2. Save the returned meta-review **verbatim** to

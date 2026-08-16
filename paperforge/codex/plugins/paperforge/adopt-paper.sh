@@ -138,12 +138,35 @@ if ! git -C "$DEST" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
 fi
 
 # Best-effort probe: is the Project Steward agent plugin installed for
-# Claude Code (plugin registry / cache) or Codex (steward prompts)?
-# Not finding it proves nothing — messages say "detected", never "installed".
+# Claude Code (plugin registry / cache), Codex (steward prompts), or
+# Grok Build (~/.grok/plugins)? Not finding it proves nothing —
+# messages say "detected", never "installed".
+grok_plugin_dir_named () {
+    local name="$1" root d
+    root="${HOME}/.grok/plugins"
+    if [ -d "$root" ]; then
+        [ -d "${root}/${name}" ] && return 0
+        for d in "${root}"/*/"${name}" "${root}"/*/*/"${name}"; do
+            [ -d "$d" ] && return 0
+        done
+    fi
+    root="${HOME}/.grok/installed-plugins"
+    [ -d "$root" ] || return 1
+    for d in "${root}"/*; do
+        [ -d "$d" ] || continue
+        if [ -f "${d}/.claude-plugin/plugin.json" ] \
+           && grep -qs "\"name\": \"${name}\"" "${d}/.claude-plugin/plugin.json"; then
+            return 0
+        fi
+        [ "$(basename "$d")" = "$name" ] && return 0
+    done
+    return 1
+}
 steward_plugin_detected () {
     grep -qs '"project-steward@' "${HOME}/.claude/plugins/installed_plugins.json" \
       || compgen -G "${HOME}/.claude/plugins/cache/*/project-steward" >/dev/null \
-      || [ -f "${HOME}/.codex/prompts/steward-init.md" ]
+      || [ -f "${HOME}/.codex/prompts/steward-init.md" ] \
+      || grok_plugin_dir_named project-steward
 }
 
 # Optional Project Steward seeding. Adopt never commits — review git status.
@@ -169,7 +192,7 @@ if [ "$STEWARD" = 1 ]; then
     else
         {
             echo "warning: --steward: no Project Steward channel detected — the CLI is"
-            echo "  not on PATH and no agent plugin (Claude Code / Codex) was found."
+            echo "  not on PATH and no agent plugin (Claude Code / Codex / Grok) was found."
             echo "  Install one:"
             echo "    CLI:    pipx install project-steward   (seeds at scaffold time)"
             echo "    plugin: https://github.com/WSH95/project-steward"
@@ -182,7 +205,7 @@ fi
 echo
 echo "Adoption complete. Next steps:"
 echo "  1. cd ${DEST}  (review 'git status' before committing the scaffolding)"
-echo "  2. Start your agent (claude / codex)"
+echo "  2. Start your agent (claude / codex / grok)"
 echo "  3. Say: \"Start the intake interview.\""
 if [ "$SEEDED" = 0 ]; then
     echo "  4. (optional) Using Project Steward? Run /project-steward:init in the"
