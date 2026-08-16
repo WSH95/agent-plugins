@@ -17,10 +17,22 @@ Codex:
 codex plugin marketplace add https://github.com/WSH95/agent-plugins
 ```
 
+Grok Build (reuses the Project Steward Claude plugin; no third folder):
+
+```bash
+grok plugin marketplace add https://github.com/WSH95/agent-plugins
+grok plugin install project-steward --trust
+```
+
+`--trust` is required for lifecycle hooks. Skills and commands can also
+appear from a Claude Code install via Grok's Claude compatibility, but
+those hooks stay inert until Grok trusts the plugin.
+
 ## Plugins
 
 - [Project Steward](#project-steward-use-case) — cross-agent project
-  stewardship plugin for Claude Code, Codex, and other coding agents.
+  stewardship plugin for Claude Code, Codex, Grok Build, and other
+  coding agents.
 - [Paperforge](#paperforge-use-case) - academic paper writing, mock review, revision, and paper workspace scaffolding.
 
 ### Use Case
@@ -30,6 +42,11 @@ codex plugin marketplace add https://github.com/WSH95/agent-plugins
 Use Project Steward when working with an LLM coding agent on a project
 that needs durable project memory, progress tracking, and clean handoff
 across sessions or tools.
+
+For Grok Build, install Project Steward from this marketplace (the
+Claude plugin path) and pass `--trust` so hooks run. Use
+`/session-resume` or `/project-steward:resume` for the repo-resident
+recap — Grok's bare `/resume` is the native session picker.
 
 For Codex, install Project Steward from this marketplace to get the
 skills. To use the lifecycle hooks, first clone the source repository and
@@ -67,8 +84,8 @@ Example interactions:
 - Ask agent to initialize Project Steward in a repository so future
   agents can read the project charter, plan, risks, decisions, and
   handoff state.
-- Ask agent to resume a project after switching between Claude Code and
-  Codex, using repository state instead of native chat history.
+- Ask agent to resume a project after switching among Claude Code,
+  Codex, and Grok, using repository state instead of native chat history.
 - Ask agent to checkpoint progress before a risky change, after a
   decision, or before ending a session.
 - Ask agent to wrap up a session with a zero-context handoff for the next
