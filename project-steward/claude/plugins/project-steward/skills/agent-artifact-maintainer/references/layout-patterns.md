@@ -45,6 +45,9 @@ keep separate hand-maintained Claude and Codex copies of shared skill text.
 - Shared skills and references live once.
 - Platform-specific commands, prompts, hooks, and manifests live in
   platform-specific source folders.
+- Grok Build consumes the generated Claude payload (`skills/`,
+  `commands/`, `hooks/`, `.claude-plugin/`). Do not author a third
+  `plugin-src/grok/` copy of shared files.
 - Generated dist folders must be reproducible from source.
 - Tests should prove important generated files exist and unrelated platform
   files do not leak into the wrong payload.

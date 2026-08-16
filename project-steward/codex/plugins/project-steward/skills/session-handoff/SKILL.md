@@ -1,6 +1,6 @@
 ---
 name: session-handoff
-description: Write a complete session handoff in a Project Steward managed project. Use when the user says they are pausing, leaving, wrapping up, done for today, switching tools (Claude Code <-> Codex) or devices, ending the session, or asks to "hand off" / "save state" — and before any planned risky operation. Also used by the Stop-hook auto-checkpoint. Rewrites .project-steward/HANDOFF.md for a zero-context successor, appends PROGRESS.md, and proposes a git commit.
+description: Write a complete session handoff in a Project Steward managed project. Use when the user says they are pausing, leaving, wrapping up, done for today, switching tools (Claude Code <-> Codex <-> Grok) or devices, ending the session, or asks to "hand off" / "save state" — and before any planned risky operation. Also used by the Stop-hook auto-checkpoint. Rewrites .project-steward/HANDOFF.md for a zero-context successor, appends PROGRESS.md, and proposes a git commit.
 ---
 
 # Session handoff

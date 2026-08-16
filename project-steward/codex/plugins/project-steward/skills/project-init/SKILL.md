@@ -5,7 +5,7 @@ description: Initialize any repository or empty directory as an agent-managed Pr
 
 # Project init
 
-Goal: a repository that any agent (Claude Code, Codex, other) can pick up
+Goal: a repository that any agent (Claude Code, Codex, Grok, other) can pick up
 cold. Interview first, generate second, approve before writing.
 
 ## Phase 0 — Detect state
@@ -35,8 +35,8 @@ their contents.
 
 ## Phase 2 — Interview (batched, load-bearing only)
 
-Ask at most 2 rounds of 3–5 batched questions (use AskUserQuestion when
-available). Only ask what the survey could not answer or what requires
+Ask at most 2 rounds of 3–5 batched questions (use `ask_user_question`
+or AskUserQuestion when available). Only ask what the survey could not answer or what requires
 user intent: primary focus, build/test/lint commands, conventions to
 enforce, task-backend preference (delegate the explanation to the
 backend-broker skill), git policy, first milestone.
@@ -67,10 +67,10 @@ Never guess an unanswered load-bearing question — record it in
 2. Paste the complete AGENTS.md draft (fenced; or diff, if the file
    exists) and the file plan into your reply — the user-visible message
    text — BEFORE asking anything. Thinking, subagent transcripts,
-   AskUserQuestion dialogs, and collapsed tool output are not review
+   AskUserQuestion / `ask_user_question` dialogs, and collapsed tool output are not review
    surfaces: if the draft does not appear verbatim in the visible
    conversation, you may not ask for approval.
-3. Get explicit approval (AskUserQuestion is fine for the question
+3. Get explicit approval (AskUserQuestion / `ask_user_question` is fine for the question
    itself), then apply by re-running the same flags with `--dry-run`
    replaced by `--yes`, so blocks and state files are written
    deterministically and idempotently. Then edit the generated
@@ -90,7 +90,8 @@ propose that commit. **Never force git init; never push.**
 
 ≤ 10 lines: what was created, what was inferred vs. asked, open
 questions recorded, and the suggested next command
-(`/project-steward:resume` next session).
+(`/project-steward:resume` next session; on Grok, `/session-resume` —
+bare `/resume` is Grok's native session picker).
 
 ## Interop
 
