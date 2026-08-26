@@ -25,8 +25,8 @@ from .managed_blocks import (convert_legacy_markers, unified_diff,
 from .paths import legacy_dir, runtime_dir, state_dir
 from .scaffold import gitignore_block, session_protocol_block
 from .sessions import append_progress
-from .state import (default_state, utcnow_iso, write_json_atomic,
-                    write_text_atomic)
+from .state import (default_state, parse_front_matter, update_front_matter,
+                    utcnow_iso, write_json_atomic, write_text_atomic)
 
 LEGACY_STATE_FILES = ["PROJECT.md", "PLAN.md", "PROGRESS.md", "HANDOFF.md",
                       "DECISIONS.md"]
@@ -163,6 +163,16 @@ def migrate(root, project_name=""):
             "notes": "Defaulted at migration; run `project-steward backend "
                      "recommend` to revisit.",
         })
+
+    handoff_path = sdir / "HANDOFF.md"
+    if handoff_path.is_file():
+        handoff_text = handoff_path.read_text(encoding="utf-8")
+        handoff_meta, _body = parse_front_matter(handoff_text)
+        if "last_commit" in handoff_meta:
+            update_front_matter(
+                handoff_path, {}, remove_keys=("last_commit",))
+            report["notes"].append(
+                "Removed obsolete HANDOFF.md last_commit metadata.")
 
     # 4. AGENTS.md markers/heading.
     report["agents_diff"] = migrate_agents_md(root)

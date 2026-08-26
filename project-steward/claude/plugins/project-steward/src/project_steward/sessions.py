@@ -287,6 +287,11 @@ def handoff_meta(root):
     return meta, body, mtime
 
 
+def _handoff_commit(root):
+    return gitutil.last_commit_for_path(
+        root, state_dir(root) / "HANDOFF.md")
+
+
 def detect_crash_signals(root, runtime_record=None):
     """Independent signals that the previous session ended abnormally.
 
@@ -333,13 +338,14 @@ def detect_crash_signals(root, runtime_record=None):
                 % (len(unmentioned), unmentioned[0].strip())
             )
 
-    last_commit = meta.get("last_commit", "")
-    if last_commit:
-        newer = gitutil.commits_since(root, last_commit)
+    handoff_path = state_dir(root) / "HANDOFF.md"
+    handoff_commit = _handoff_commit(root)
+    if handoff_commit and not gitutil.path_is_dirty(root, handoff_path):
+        newer = gitutil.commits_since(root, handoff_commit)
         if newer > 0:
             signals.append(
-                "%d commit(s) exist after the one recorded in HANDOFF.md "
-                "(%s)." % (newer, last_commit)
+                "%d commit(s) exist after the last committed HANDOFF.md "
+                "revision (%s)." % (newer, handoff_commit)
             )
 
     op = gitutil.in_progress_operation(root)
@@ -407,7 +413,7 @@ def build_recap(root, runtime_record=None):
             "updated_by": meta.get("updated_by", "unknown"),
             "session_status": meta.get("session_status", "unknown"),
             "branch": meta.get("branch", ""),
-            "last_commit": meta.get("last_commit", ""),
+            "last_commit": _handoff_commit(root),
         },
         "git": {
             "is_repo": gitutil.is_repo(root),
@@ -513,8 +519,7 @@ def checkpoint(root, note, agent, auto=False):
             "updated_at": utcnow_iso(),
             "updated_by": agent or "agent",
             "branch": gitutil.current_branch(root),
-            "last_commit": gitutil.head_sha(root),
-        })
+        }, remove_keys=("last_commit",))
     state = load_state(root)
     state["last_checkpoint_at"] = utcnow_iso()
     save_state(root, state)
@@ -556,8 +561,7 @@ def wrap(root, summary, agent):
             "updated_by": agent or "agent",
             "session_status": "closed",
             "branch": gitutil.current_branch(root),
-            "last_commit": gitutil.head_sha(root),
-        })
+        }, remove_keys=("last_commit",))
     append_progress(root, summary or "Session wrapped.", agent)
     close_runtime_session(root, "closed")
     state = load_state(root)
@@ -584,6 +588,6 @@ def close_only(root, agent):
             "updated_at": utcnow_iso(),
             "updated_by": agent or "agent",
             "session_status": "closed",
-        })
+        }, remove_keys=("last_commit",))
     close_runtime_session(root, "closed")
     log_event(root, "close", "quick close without full wrap")

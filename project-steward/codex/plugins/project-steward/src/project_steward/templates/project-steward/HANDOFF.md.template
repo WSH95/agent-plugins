@@ -3,7 +3,6 @@ updated_at: $created_at
 updated_by: project-steward init
 session_status: closed
 branch:
-last_commit:
 ---
 
 # Handoff

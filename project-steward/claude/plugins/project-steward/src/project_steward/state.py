@@ -166,10 +166,12 @@ def render_front_matter(meta, body):
     return out
 
 
-def update_front_matter(path, updates):
-    """Merge *updates* into the front matter of *path* (file must exist)."""
+def update_front_matter(path, updates, remove_keys=()):
+    """Merge updates and remove obsolete keys from Markdown front matter."""
     path = Path(path)
     meta, body = parse_front_matter(path.read_text(encoding="utf-8"))
     meta.update(updates)
+    for key in remove_keys:
+        meta.pop(key, None)
     write_text_atomic(path, render_front_matter(meta, body))
     return meta
