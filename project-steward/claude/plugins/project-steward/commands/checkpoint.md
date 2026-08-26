@@ -1,5 +1,5 @@
 ---
-description: Mid-session checkpoint — snapshot progress and refresh the handoff without ending the session.
+description: Record progress and refresh the handoff without ending the session.
 ---
 
 Follow the **session-handoff** skill's auto-checkpoint mode: briefly

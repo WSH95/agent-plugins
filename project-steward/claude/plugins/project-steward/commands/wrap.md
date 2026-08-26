@@ -1,5 +1,5 @@
 ---
-description: Wrap up the session — rewrite HANDOFF.md for a zero-context successor, update progress, and propose a commit.
+description: Wrap up the session so another agent can continue, then update progress and propose a commit.
 ---
 
 Follow the **session-handoff** skill (full wrap): rewrite the HANDOFF.md

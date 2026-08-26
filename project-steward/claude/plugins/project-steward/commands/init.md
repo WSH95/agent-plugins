@@ -1,5 +1,5 @@
 ---
-description: Initialize this repo (or empty directory) as a Project Steward managed project — survey, interview, then generate AGENTS.md + CLAUDE.md + .project-steward/ with approval gates.
+description: Initialize a Project Steward project by surveying the repo, interviewing the user, and generating its instruction and state files.
 ---
 
 Follow the **project-init** skill end to end: detect existing state

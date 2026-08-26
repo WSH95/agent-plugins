@@ -1,13 +1,13 @@
 # Plan
 
-Milestones and tasks. If an external task backend is adopted, this file
-holds milestones + a pointer only (never a duplicate task list).
+Use this file for milestones and tasks. If another task system is adopted,
+keep milestone summaries and a link here instead of copying its task list.
 
 ## $first_milestone
 
-- [ ] TODO: first concrete task
-- [ ] TODO: second concrete task
+- [ ] Define the first concrete task.
+- [ ] Add another task if needed.
 
 ## Later
 
-- [ ] TODO
+- [ ] Add work that does not belong in the current milestone.

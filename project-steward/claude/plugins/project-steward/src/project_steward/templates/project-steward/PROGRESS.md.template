@@ -1,7 +1,7 @@
 # Progress log
 
-Newest first. One short entry per semantic checkpoint — not per edit.
+Add new entries at the top when the project reaches a meaningful checkpoint.
+Do not record every edit.
 
 ### $created_at — project-steward init
-Project initialized as a Project Steward managed project.
-
+Set up Project Steward in this repository.

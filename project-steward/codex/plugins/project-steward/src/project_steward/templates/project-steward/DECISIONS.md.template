@@ -1,8 +1,13 @@
-# Decisions (ADR-lite, append-only)
+# Decisions
+
+Record decisions in order. Include the reason, the choice, and its practical
+effect.
 
 ## 0001 — $created_at — Adopt Project Steward
 
-**Context**: The project needs durable, cross-agent continuity.
-**Decision**: Manage state in `.project-steward/` with AGENTS.md as the
-canonical instruction file and CLAUDE.md as a thin Claude Code adapter.
-**Consequences**: Sessions are resumable across tools and devices via git.
+Context: Project work needs to survive changes of agent, tool, or device.
+
+Decision: Keep project state in `.project-steward/`. Use `AGENTS.md` for
+shared instructions and `CLAUDE.md` as a small Claude Code adapter.
+
+Consequences: Git carries the files needed to resume the work elsewhere.

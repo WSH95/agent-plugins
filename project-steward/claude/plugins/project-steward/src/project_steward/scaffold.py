@@ -91,23 +91,21 @@ def build_mapping(answers=None):
 def commands_block(mapping):
     return (
         "## Commands\n\n"
-        "| Task | Command |\n"
-        "| --- | --- |\n"
-        "| Build | `%(build_command)s` |\n"
-        "| Test | `%(test_command)s` |\n"
-        "| Lint | `%(lint_command)s` |\n" % mapping
+        "- Build: `%(build_command)s`\n"
+        "- Test: `%(test_command)s`\n"
+        "- Lint: `%(lint_command)s`\n" % mapping
     )
 
 
 def task_backend_block(mapping):
     name = mapping.get("backend_name", "markdown")
     if name == "markdown":
-        detail = ("Fine-grained tasks live in `.project-steward/PLAN.md` "
+        detail = ("Use `.project-steward/PLAN.md` for detailed tasks "
                   "(built-in Markdown backend).")
     else:
-        detail = ("Fine-grained tasks are owned by **%s**. "
-                  "`.project-steward/PLAN.md` holds milestones and a pointer "
-                  "only — never duplicate the task list." % name)
+        detail = ("%s owns the detailed task list. Keep only milestones and "
+                  "a pointer in `.project-steward/PLAN.md`; do not copy tasks "
+                  "between systems." % name)
     return "## Task backend\n\n%s\n" % detail
 
 
@@ -116,36 +114,20 @@ def session_protocol_block():
 
 
 SESSION_PROTOCOL_TEXT = """\
-## Agent session protocol (Project Steward)
+## Project Steward workflow
 
-Durable project state lives in `.project-steward/` and travels via git.
-Native session histories are execution details, never the source of truth.
-
-**Session start** — before other work:
-1. Read `.project-steward/HANDOFF.md`; run `project-steward resume` if the
-   CLI is installed (it also detects crashed/unclosed sessions from git
-   evidence and local runtime markers).
-2. Give the user a short recap: last session, git state, active task,
-   next step, blockers, open questions, and any abnormal-termination signs.
-
-**During work** — at semantic boundaries (task done, plan changed, decision
-made, validation run, risky step ahead), update `PLAN.md` / `PROGRESS.md` /
-`DECISIONS.md` / `QUESTIONS.md` / `RISKS.md`, or run
-`project-steward checkpoint --note "..."`. Propose a git commit at
-meaningful checkpoints (Conventional Commits; include `.project-steward/`).
-Never push without explicit approval.
-
-**Session end** — when the user pauses, wraps up, switches tools, or leaves:
-rewrite `HANDOFF.md` for a zero-context successor (state, in-flight work
-cross-checked against `git status`, numbered next steps, blockers,
-dead ends, warnings), append a `PROGRESS.md` entry, set
-`session_status: closed`, and propose a commit. The
-`project-steward wrap --summary "..."` command finalizes bookkeeping.
-
-**Guardrails** — `AGENTS.md` and `CLAUDE.md` are high-risk files: edit only
-inside `PROJECT-STEWARD` managed blocks, always show a diff and get explicit
-approval first, and record the change in `DECISIONS.md`. Do not use these
-files as progress logs. Keep volatile state in `.project-steward/`.
+- Start by reading `.project-steward/HANDOFF.md`. Run `project-steward resume`
+  when available, then recap the current task, next step, blockers, open
+  questions, git state, and any crash signals.
+- At meaningful checkpoints, write plain, factual updates to the relevant
+  files in `.project-steward/` or run `project-steward checkpoint --note "..."`.
+- Before pausing or switching agents, leave `HANDOFF.md` ready for someone
+  without this chat. Run `project-steward wrap --summary "..."` when available.
+- Propose Conventional Commits that include `.project-steward/`. Never push,
+  force-push, or rewrite published history without explicit approval.
+- Treat `AGENTS.md` and `CLAUDE.md` as user-owned files. Change only
+  `PROJECT-STEWARD` managed blocks, show the diff first, and record the
+  approved change in `.project-steward/DECISIONS.md`.
 """
 
 

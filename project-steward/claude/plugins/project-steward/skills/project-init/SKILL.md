@@ -53,7 +53,11 @@ Never guess an unanswered load-bearing question — record it in
 
 ## Phase 3 — Generate (approval gated)
 
-1. Map the interview answers onto init flags and preview without writing:
+1. Read `../../references/documentation-style.md` before drafting project
+   prose. If a `humanizer` skill is available, use its optional pass on the
+   new prose before showing or writing it. Preserve every fact, command, link,
+   placeholder, and Markdown structure.
+2. Map the interview answers onto init flags and preview without writing:
    `project-steward init --project-name "..." --one-liner "..."
    --primary-language "..." --build-command "..." --test-command "..."
    --lint-command "..." --backend markdown --first-milestone "..."
@@ -61,22 +65,23 @@ Never guess an unanswered load-bearing question — record it in
    diffs for `AGENTS.md`, `CLAUDE.md`, and `.gitignore`, and writes
    nothing. (Without the CLI: compose the same draft yourself from
    `../../src/project_steward/templates/`, preserving any existing user
-   content and editing only inside managed blocks.) Keep AGENTS.md canonical and < 150 lines:
-   overview, source of truth, conventions, git policy — plus the three
-   managed blocks: `commands`, `task-backend`, `agent-session-protocol`.
-2. Paste the complete AGENTS.md draft (fenced; or diff, if the file
+   content and editing only inside managed blocks.) A representative new
+   `AGENTS.md` should be about 40-45 lines and must stay below 50 lines. Keep
+   the project context plus the three managed blocks: `commands`,
+   `task-backend`, and `agent-session-protocol`.
+3. Paste the complete AGENTS.md draft (fenced; or diff, if the file
    exists) and the file plan into your reply — the user-visible message
    text — BEFORE asking anything. Thinking, subagent transcripts,
    AskUserQuestion / `ask_user_question` dialogs, and collapsed tool output are not review
    surfaces: if the draft does not appear verbatim in the visible
    conversation, you may not ask for approval.
-3. Get explicit approval (AskUserQuestion / `ask_user_question` is fine for the question
+4. Get explicit approval (AskUserQuestion / `ask_user_question` is fine for the question
    itself), then apply by re-running the same flags with `--dry-run`
    replaced by `--yes`, so blocks and state files are written
    deterministically and idempotently. Then edit the generated
    `.project-steward/PROJECT.md` and `PLAN.md` with the interview's real
    content.
-4. `CLAUDE.md` must stay a thin adapter that imports `@AGENTS.md`
+5. `CLAUDE.md` must stay a thin adapter that imports `@AGENTS.md`
    (Claude Code does not read AGENTS.md natively).
 
 ## Phase 4 — Git

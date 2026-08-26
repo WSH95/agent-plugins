@@ -11,12 +11,14 @@ condensed protocol is below.
    project scripts. Separate confident facts from open questions.
 3. Interview: at most 2 rounds of 3-5 batched, load-bearing questions.
    Record unanswerables in .project-steward/QUESTIONS.md - never guess.
-4. Generate with approval: show the full AGENTS.md draft (canonical,
-   <150 lines, managed blocks: commands / task-backend /
+4. Write plain, factual project prose. If a `humanizer` skill is available,
+   apply it only to the new text and preserve all facts and document structure.
+5. Generate with approval: show the full AGENTS.md draft (normally 40-45
+   lines and below 50, with managed blocks: commands / task-backend /
    agent-session-protocol); on approval run
    `project-steward init --project-name ... --yes` (or create files from
    templates manually), then fill PROJECT.md and PLAN.md with real
    content. CLAUDE.md stays a thin @AGENTS.md adapter.
-5. Git: if not a repo, ask, then assist `git init` + initial commit
+6. Git: if not a repo, ask, then assist `git init` + initial commit
    `chore: initialize Project Steward project management`. Never push.
-6. Summarize in <=10 lines.
+7. Summarize in <=10 lines.

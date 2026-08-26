@@ -1,22 +1,22 @@
-# $project_name — project charter
+# $project_name project charter
 
 $one_liner
 
 - Created: $created_at (Project Steward $steward_version)
-- Primary language/stack: $primary_language
+- Stack: $primary_language
 
 ## Goals
 
-- TODO: what success looks like.
+- TODO: Describe the result this project should deliver.
 
 ## Non-goals
 
-- TODO: explicitly out of scope.
+- TODO: List work this project will not cover.
 
-## Users / stakeholders
+## Users and maintainers
 
-- TODO.
+- TODO: Name the people or groups who use or maintain this project.
 
 ## Constraints
 
-- TODO: platform, performance, security/privacy, licensing.
+- TODO: List platform, performance, security, privacy, and licensing limits.

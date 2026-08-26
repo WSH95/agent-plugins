@@ -8,6 +8,11 @@ description: Keep Project Steward state current DURING work in any repo with .pr
 Update at semantic boundaries — not after every edit, and never only at
 session end.
 
+When writing project state, follow
+`../../references/documentation-style.md`. Apply its rules only to new or
+changed prose. Use the optional `humanizer` pass when that skill is available,
+then verify that the rewrite preserved every fact and structural field.
+
 ## Event → action
 
 | Event | Action |
@@ -51,8 +56,10 @@ merge conflicts).
   change in `DECISIONS.md`.
 - Edit only inside `PROJECT-STEWARD` managed blocks; user prose is
   untouchable.
-- Keep AGENTS.md < 300 lines; CLAUDE.md stays a thin `@AGENTS.md`
-  adapter. Progress logs and TODO dumps never belong in either file.
+- Keep Project Steward's generated `AGENTS.md` contribution compact; a new
+  scaffold stays below 50 lines before user additions. `CLAUDE.md` remains a
+  thin `@AGENTS.md` adapter. Progress logs and TODO dumps belong in project
+  state, not either instruction file.
 
 ## Doc-drift audit (on request or via /project-steward:audit)
 

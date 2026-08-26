@@ -1,5 +1,5 @@
 ---
-description: Resume this project from repo-resident state — recap the last session, detect crashed/unclosed sessions, reconstruct if needed.
+description: Resume from repository state, recap the last session, and investigate an incomplete handoff when needed.
 ---
 
 Follow the **session-resume** skill: run
