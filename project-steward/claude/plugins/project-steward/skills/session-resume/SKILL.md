@@ -30,8 +30,9 @@ Treat the previous session as crashed/unclosed if ANY hold:
 
 ## 3. Reconstruct if crashed
 
-Rebuild the picture from evidence: `git diff` + `git log` since the
-handoff's `last_commit`, `runtime/activity.log`, and
+Rebuild the picture from evidence: `git diff` + `git log` since the commit
+that last changed `HANDOFF.md` (reported as `handoff.last_commit` by the CLI),
+`runtime/activity.log`, and
 `runtime/last_snapshot.md`. State plainly that the last session did not
 close, and label every rebuilt claim **"(inferred)"**. Propose updating
 `HANDOFF.md` with the reconstruction **after** the user confirms — do not

@@ -176,13 +176,14 @@ def _handle_stop(root, agent, payload):
     min_edits = int(config.get("auto_handoff_min_edits", 5))
     cooldown_s = int(config.get("auto_handoff_cooldown_min", 45)) * 60
 
+    guard = read_json(_stop_guard_state(root), {})
+    last_auto = float(guard.get("last_auto_epoch", 0))
     _meta, _body, handoff_mtime = sessions.handoff_meta(root)
-    edits = sessions.handoff_relevant_activity_count_since(root, handoff_mtime)
+    baseline = max(handoff_mtime, last_auto)
+    edits = sessions.handoff_relevant_activity_count_since(root, baseline)
     if edits < min_edits:
         return
 
-    guard = read_json(_stop_guard_state(root), {})
-    last_auto = float(guard.get("last_auto_epoch", 0))
     if time.time() - last_auto < cooldown_s:
         return
 
@@ -196,10 +197,9 @@ def _handle_stop(root, agent, payload):
         _emit({
             "systemMessage": (
                 "Project Steward: %d handoff-relevant actions since "
-                "HANDOFF.md was last updated. If project state changed "
-                "materially, refresh HANDOFF.md; otherwise consider "
-                "`project-steward checkpoint --note ...` for a lightweight "
-                "checkpoint." % edits
+                "the last handoff or Stop-guard prompt. If project state "
+                "changed materially, refresh HANDOFF.md. If it did not, "
+                "leave tracked files unchanged." % edits
             )
         })
         return
@@ -209,14 +209,13 @@ def _handle_stop(root, agent, payload):
         "decision": "block",
         "reason": (
             "Project Steward auto-checkpoint: %d handoff-relevant actions have "
-            "occurred since .project-steward/HANDOFF.md was last updated. "
+            "occurred since the last handoff or Stop-guard prompt. "
             "Before finishing: if project state changed materially, update "
             "HANDOFF.md (Now / In flight / Next steps / Blockers) and append "
             "a one-line PROGRESS.md entry prefixed with [auto-checkpoint]. "
-            "Otherwise run `project-steward checkpoint --note \"...\"` for a "
-            "lightweight checkpoint; it refreshes checkpoint metadata and "
-            "appends PROGRESS.md. Then stop. Keep it brief; do not start new "
-            "work." % edits
+            "If it did not, leave tracked files unchanged and stop. Do not "
+            "create a checkpoint only to acknowledge this prompt. Keep it "
+            "brief; do not start new work." % edits
         ),
     })
 

@@ -44,6 +44,37 @@ def head_sha(root, short=True):
     return out if rc == 0 else ""
 
 
+def _relative_path(root, path):
+    root_path = Path(root).resolve()
+    candidate = Path(path)
+    if not candidate.is_absolute():
+        candidate = root_path / candidate
+    try:
+        return candidate.resolve().relative_to(root_path).as_posix()
+    except (OSError, ValueError):
+        return ""
+
+
+def last_commit_for_path(root, path, short=True):
+    """Latest visible commit that changed *path*, or an empty string."""
+    relative = _relative_path(root, path)
+    if not relative:
+        return ""
+    fmt = "%h" if short else "%H"
+    rc, out = run_git(["log", "-1", "--format=%s" % fmt, "--", relative],
+                      root)
+    return out if rc == 0 else ""
+
+
+def path_is_dirty(root, path):
+    """Whether *path* has tracked or untracked working-tree changes."""
+    relative = _relative_path(root, path)
+    if not relative:
+        return False
+    rc, out = run_git(["status", "--porcelain", "--", relative], root)
+    return rc == 0 and bool(out.strip())
+
+
 def dirty_files(root):
     rc, out = run_git(["status", "--porcelain"], root)
     if rc != 0 or not out:

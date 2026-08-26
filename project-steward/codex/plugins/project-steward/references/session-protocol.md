@@ -27,7 +27,8 @@ Projectforge v0.1 flaw where resume edited HANDOFF.md front matter.)
    automatically.
 2. **Work**: updates at semantic boundaries (see the progress-tracking
    skill's event table); PostToolUse hooks feed the activity log.
-3. **Checkpoint**: PROGRESS append + HANDOFF front-matter refresh;
+3. **Checkpoint**: PROGRESS append + HANDOFF front-matter refresh. Git history,
+   not a self-referential front-matter field, identifies the handoff commit;
    triggered manually, by the wrap-language detector, or by the Stop
    guard.
 4. **Wrap**: full HANDOFF rewrite for a zero-context successor;
@@ -41,16 +42,19 @@ Projectforge v0.1 flaw where resume edited HANDOFF.md front matter.)
 - dirty files or commits the handoff does not mention
 - git merge/rebase/cherry-pick in progress
 
-Reconstruction uses `git diff`/`git log` since `last_commit` plus runtime
-logs; every rebuilt claim is labeled "(inferred)".
+Reconstruction uses `git diff`/`git log` since the commit that last changed
+`HANDOFF.md`, plus runtime logs. The CLI reports that derived commit as
+`handoff.last_commit`; every rebuilt claim is labeled "(inferred)".
 
 ## Stop guard (Claude Code + Codex + Grok hooks)
 
 If >= `auto_handoff_min_edits` actions occurred since the handoff's last
 update and the cooldown (`auto_handoff_cooldown_min`) passed, the Stop
 hook emits `{"decision": "block", "reason": ...}` once, instructing a
-brief auto-checkpoint. `stop_hook_active` / `stopHookActive` prevent
-loops. Grok session-teardown Stops (`reason` `shutdown` or
-`channel_closed`) are ignored. Modes: `block` (default) / `remind`
+brief auto-checkpoint. Each activity batch is handled once. If project state
+did not change, the agent leaves tracked files unchanged. `stop_hook_active` /
+`stopHookActive` prevent same-turn loops. Grok session-teardown Stops
+(`reason` `shutdown` or `channel_closed`) are ignored. Modes: `block`
+(default) / `remind`
 (`systemMessage` only; weaker on Grok) / `off`. Worst case after a hard
 crash: one cooldown window of work, still journaled in runtime logs.

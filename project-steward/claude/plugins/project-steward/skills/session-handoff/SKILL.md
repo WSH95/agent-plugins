@@ -42,11 +42,14 @@ Keep every verified fact and all required headings.
 
 ## Auto-checkpoint (mid-session, hook-triggered)
 
-When the Stop hook blocks with a stale-handoff reason: briefly update
-`HANDOFF.md` (Now / In flight / Next steps) or run
-`project-steward checkpoint --note "..." --auto`, keep
-`session_status: active`, prefix the progress entry `[auto-checkpoint]`,
-tell the user in one line, and stop. Do not start new work.
+When the Stop hook blocks with a stale-handoff reason, first decide whether
+project state changed. If it did, briefly update `HANDOFF.md` (Now / In flight /
+Next steps) or run `project-steward checkpoint --note "..." --auto`, keep
+`session_status: active`, prefix the progress entry `[auto-checkpoint]`, tell
+the user in one line, and stop. If nothing material changed, leave tracked
+files unchanged and stop. Do not create a checkpoint only to acknowledge the
+prompt. The commit that stores a completed handoff does not make that handoff
+stale.
 
 ## Quality self-check
 
