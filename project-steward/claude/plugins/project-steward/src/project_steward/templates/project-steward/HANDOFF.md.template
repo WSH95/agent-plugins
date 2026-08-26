@@ -8,34 +8,34 @@ last_commit:
 
 # Handoff
 
-Written for a zero-context successor (another agent, another tool,
-another device). Keep every section current at wrap-up.
+This file should give the next agent enough context to continue without the
+previous chat. Update it when work pauses or moves to another agent.
 
 ## Now
 
-Freshly initialized; no work in flight.
+Project Steward is set up. No project work has started.
 
 ## In flight
 
-- (none)
+- None.
 
 ## Next steps
 
-1. Review `.project-steward/PROJECT.md` and PLAN.md; refine the first
-   milestone.
+1. Review `.project-steward/PROJECT.md` and `.project-steward/PLAN.md`, then
+   replace the placeholder milestone and tasks.
 
 ## Blockers
 
-- (none)
+- None.
 
 ## Key files
 
-- (none yet)
+- None yet.
 
 ## Tried and rejected
 
-- (none)
+- None.
 
 ## Warnings
 
-- (none)
+- None.

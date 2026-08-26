@@ -8,6 +8,11 @@ description: Write a complete session handoff in a Project Steward managed proje
 Write for a stranger with zero context — possibly a different model on a
 different machine. If it is not in the files, it did not happen.
 
+Before writing, read `../../references/documentation-style.md`. Apply it to
+the handoff text and other state entries changed in this session. If a
+`humanizer` skill is available, use its optional pass before saving the files.
+Keep every verified fact and all required headings.
+
 ## Full wrap (session ending)
 
 1. **Rewrite the `HANDOFF.md` body** (front matter is handled in step 3):

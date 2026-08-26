@@ -37,6 +37,10 @@ close, and label every rebuilt claim **"(inferred)"**. Propose updating
 `HANDOFF.md` with the reconstruction **after** the user confirms — do not
 silently rewrite history you did not witness.
 
+If the user approves a reconstructed handoff, follow
+`../../references/documentation-style.md` for the new text. Use the optional
+`humanizer` pass when available, and keep all evidence and inference labels.
+
 ## 4. Recap to the user (≤ 15 lines, before any work)
 
 ```

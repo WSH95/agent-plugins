@@ -1,6 +1,6 @@
 # Open questions
 
-Questions an agent could not answer from the repository and must not
-guess. Check off with the answer inline once resolved.
+Record questions that the repository does not answer instead of guessing.
+Add the answer to the item when it is resolved.
 
-- [ ] (example) Which deployment target should CI validate against?
+- [ ] Which deployment target should CI validate?

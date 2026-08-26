@@ -11,7 +11,9 @@ follow it; condensed protocol:
    or commits/dirty files postdate the handoff; git merge/rebase in
    progress. If so, reconstruct from git diff/log + runtime logs and
    label claims "(inferred)"; update the handoff only after the user
-   confirms.
+   confirms. Write the reconstruction in plain, factual language. If a
+   `humanizer` skill is available, apply it only to the new prose and preserve
+   every fact and inference label.
 3. Recap to the user in <=15 lines (done last time, current task, git
    state, next steps, blockers, crash note) and confirm the next step.
 Resume is read-only on committed files - do not rewrite HANDOFF.md at
