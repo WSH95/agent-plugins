@@ -1,7 +1,26 @@
 # Backend selection
 
+## Names the CLI accepts
+
+`project-steward backend adopt <name>` and `init --backend <name>` take
+the identifier, not the display name:
+
+| Identifier | Backend |
+| --- | --- |
+| `markdown` | Built-in Markdown (PLAN.md) |
+| `backlog_md` | Backlog.md |
+| `beads` | beads (bd) |
+| `ccpm` | CCPM |
+| `taskmaster` | Taskmaster |
+| `spec_kit` | GitHub Spec Kit |
+| `github_issues` | GitHub Issues (via gh) |
+
+`linear` and `jira` are stubs and cannot be adopted.
+
 One system owns fine-grained tasks at a time; PLAN.md degrades to
-milestones + a pointer when an external backend is adopted.
+milestone goals and a dated overview with task IDs when an external backend
+is adopted. Keep active, blocked, next, and recently completed work readable;
+task status remains authoritative in the selected backend.
 
 ## Detection
 
@@ -30,8 +49,10 @@ backend doesn't track.
 ## Adoption procedure
 
 recommend -> plain-English explanation -> approval -> `backend adopt`
-(AGENTS.md task-backend block diff + backend.json) -> move open tasks
-with the user -> DECISIONS.md entry. Installation is assisted, never
+(WORKFLOW.md task-backend block diff + backend.json (AGENTS.md for legacy projects)).
+The command does not export backend tasks into PLAN.md. After verifying the
+backend, update PLAN.md's dated overview with task IDs and record the decision
+in DECISIONS.md. Installation is assisted, never
 silent, and install commands are labeled "verify against upstream README"
 because installers drift.
 

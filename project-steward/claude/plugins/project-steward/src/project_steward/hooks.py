@@ -23,9 +23,9 @@ import sys
 import time
 
 from . import sessions
-from .paths import (find_project_root, has_legacy_state, is_steward_project,
-                    runtime_dir)
-from .state import (load_config, read_json, utcnow_iso, write_json_atomic)
+from .paths import find_project_root, is_steward_project, runtime_dir
+from .state import (load_config, load_config_with_diagnostics, read_json,
+                    utcnow_iso, write_json_atomic)
 
 WRAP_PHRASES = [
     "wrap up", "wrapping up", "wrap this up", "pause here", "pausing",
@@ -76,6 +76,13 @@ def _resolve_agent(agent):
     return agent
 
 
+def _session_id(payload):
+    value = _field(payload, "session_id", "sessionId")
+    if value is None:
+        value = os.environ.get("GROK_SESSION_ID")
+    return value if isinstance(value, str) and value else None
+
+
 def _emit(obj):
     try:
         sys.stdout.write(json.dumps(obj))
@@ -99,21 +106,21 @@ def _additional_context(event_name, text):
 
 def _handle_session_start(root, agent, payload):
     if not is_steward_project(root):
-        if has_legacy_state(root):
-            _emit(_additional_context(
-                "SessionStart",
-                "A legacy .projectforge/ directory was found. Run "
-                "`project-steward migrate` (asks for approval) to upgrade it "
-                "to .project-steward/, then follow the session-resume skill.",
-            ))
         return
-    previous, _record = sessions.claim_session(root, agent)
+    previous, _record = sessions.claim_session(
+        root, agent, session_id=_session_id(payload))
     recap = sessions.build_recap(root, runtime_record=previous)
     text = sessions.format_recap(recap)
-    if previous.get("status") == "active" and previous.get("host"):
+    # A typo in config.toml silently reverts settings to defaults — including
+    # turning a deliberate `auto_handoff_mode = "off"` back into "block".
+    # Say so here, on a channel that is already JSON, rather than adding
+    # stdout to any other hook.
+    _config, problems = load_config_with_diagnostics(root)
+    if problems:
         text += (
-            "\nNote: a previous runtime claim on this device (%s) was still "
-            "marked active." % previous.get("agent", "?")
+            "\nCONFIG: .project-steward/config.toml has %d problem(s); the "
+            "affected settings fell back to defaults — %s"
+            % (len(problems), "; ".join(problems[:3]))
         )
     text += (
         "\nACTION REQUIRED: follow the session-resume skill — give the user "
@@ -133,11 +140,13 @@ def _handle_post_tool_use(root, agent, payload):
         tool_input = {}
     detail = (
         tool_input.get("command")
+        or tool_input.get("cmd")
         or tool_input.get("file_path")
         or tool_input.get("path")
         or ""
     )
-    sessions.record_activity(root, tool, detail)
+    sessions.record_activity(
+        root, tool, detail, session_id=_session_id(payload))
 
 
 def _handle_user_prompt_submit(root, agent, payload):
@@ -154,7 +163,7 @@ def _handle_user_prompt_submit(root, agent, payload):
             "session. Before finishing, follow the session-handoff skill "
             "(rewrite .project-steward/HANDOFF.md for a zero-context "
             "successor, append PROGRESS.md, run `project-steward wrap "
-            "--summary \"...\"`, and propose a git commit).",
+            "--summary \"...\"`, and follow config.toml commit_policy).",
         ))
 
 
@@ -230,7 +239,8 @@ def _handle_session_end(root, agent, payload):
     if not is_steward_project(root):
         return
     sessions.write_snapshot(root, "session-end")
-    sessions.close_runtime_session(root, "ended")
+    sessions.close_runtime_session(
+        root, "ended", session_id=_session_id(payload))
 
 
 HANDLERS = {

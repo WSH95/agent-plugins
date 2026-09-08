@@ -3,11 +3,3 @@
 $one_liner
 
 Stack: $primary_language.
-
-## Project context
-
-- Read `.project-steward/HANDOFF.md` for the current state and next steps.
-- Project goals and milestones live in `.project-steward/PROJECT.md` and
-  `.project-steward/PLAN.md`.
-- The other files in `.project-steward/` record progress, decisions,
-  questions, risks, and verification.

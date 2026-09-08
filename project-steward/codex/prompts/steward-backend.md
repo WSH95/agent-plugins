@@ -9,6 +9,9 @@ condensed protocol.
 3. Get approval before switching.
 4. Run `project-steward backend adopt <name>` only after approval, then
    help move open tasks so one system owns fine-grained work and PLAN.md
-   becomes milestones plus a pointer.
+   retains milestone goals and a dated overview of active, blocked, next,
+   and recently completed task IDs. Refresh the full HANDOFF.md as well.
+   If backend access fails, preserve the last verified overview, label the
+   limitation, and record the next reconciliation step.
 5. Never install anything without explicit approval.
 

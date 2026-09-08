@@ -1,6 +1,6 @@
 """Session lifecycle: resume recap, crash detection, checkpoint, wrap.
 
-Design rule (fixes a v0.1 Projectforge flaw): starting or resuming a session
+Design rule: starting or resuming a session
 must NOT dirty the git working tree. Active-session claims, heartbeats, and
 activity logs live in `.project-steward/runtime/` (gitignored). Committed
 files (HANDOFF.md, PROGRESS.md, ...) change only at semantic checkpoints
@@ -10,13 +10,15 @@ from __future__ import annotations
 
 import calendar
 import os
+import re
 import socket
 import time
 from pathlib import Path
 
-from . import gitutil
+from . import StewardError, gitutil
 from .paths import runtime_dir, state_dir
-from .state import (load_config, load_state, parse_front_matter, read_json,
+from .state import (detect_newline, load_config, load_state,
+                    parse_front_matter, read_json,
                     save_state, update_front_matter, utcnow_iso,
                     write_json_atomic, write_text_atomic)
 
@@ -32,7 +34,9 @@ MUTATING_TOOLS = {
 }
 SHELL_TOOLS = {
     "bash",
+    "exec_command",
     "run_terminal_command",
+    "shell_command",
 }
 READ_ONLY_COMMAND_PREFIXES = (
     "cat ",
@@ -67,6 +71,7 @@ READ_ONLY_COMMAND_PREFIXES = (
     "rg ",
     "sed -n ",
     "tail ",
+    "wc ",
     "which ",
 )
 READ_ONLY_COMMAND_EXACT = (
@@ -82,6 +87,8 @@ RECOMMENDED_HANDOFF_SECTIONS = [
     "## Warnings",
 ]
 
+_UNSPECIFIED_SESSION_ID = object()
+
 
 # --------------------------------------------------------------------------
 # Runtime (gitignored) session records
@@ -95,38 +102,71 @@ def load_runtime_session(root):
     return read_json(_session_file(root), {})
 
 
-def claim_session(root, agent):
+def claim_session(root, agent, session_id=None, reuse_current=False):
+    """Claim the single current marker without replacing its owner blindly.
+
+    Hook starts reuse an active marker with the same session ID. CLI resume
+    passes ``reuse_current=True`` so it can join an already active marker.
+    """
     runtime_dir(root, create=True)
     previous = load_runtime_session(root)
+    active = previous.get("status") == "active"
+    same_hook_session = (
+        session_id is not None
+        and previous.get("session_id") == session_id
+    )
+    if active and (reuse_current or same_hook_session):
+        record = dict(previous)
+        record["updated_at"] = utcnow_iso()
+        write_json_atomic(_session_file(root), record)
+        return previous, record
+
+    now = utcnow_iso()
     record = {
         "status": "active",
         "agent": agent or "unknown",
         "host": socket.gethostname(),
         "pid": os.getpid(),
-        "started_at": utcnow_iso(),
-        "updated_at": utcnow_iso(),
+        "started_at": now,
+        "updated_at": now,
     }
+    if session_id is not None:
+        record["session_id"] = session_id
     write_json_atomic(_session_file(root), record)
     return previous, record
 
 
-def close_runtime_session(root, status="closed"):
+def close_runtime_session(root, status="closed",
+                          session_id=_UNSPECIFIED_SESSION_ID):
+    """Close the current marker, optionally only for its hook session ID.
+
+    Calls that omit ``session_id`` are deliberate project-level operations.
+    Passing ``None`` ownership-checks a legacy ID-less hook session.
+    """
     record = load_runtime_session(root)
-    if record:
-        record["status"] = status
-        record["updated_at"] = utcnow_iso()
-        write_json_atomic(_session_file(root), record)
+    if not record:
+        return False
+    if (session_id is not _UNSPECIFIED_SESSION_ID
+            and record.get("session_id") != session_id):
+        return False
+    record["status"] = status
+    record["updated_at"] = utcnow_iso()
+    write_json_atomic(_session_file(root), record)
+    return True
 
 
-def record_activity(root, tool, detail=""):
-    """Heartbeat + rotating activity log. Called by PostToolUse hooks."""
+def record_activity(root, tool, detail="", session_id=None):
+    """Log PostToolUse activity and heartbeat only its owned marker."""
     runtime_dir(root, create=True)
     record = load_runtime_session(root)
-    if record.get("status") == "active":
+    if (record.get("status") == "active"
+            and record.get("session_id") == session_id):
         record["updated_at"] = utcnow_iso()
         write_json_atomic(_session_file(root), record)
+    relevant = activity_is_handoff_relevant(tool, detail)
     detail_text = (detail or "")[:200].replace("\n", " ")
-    line = "%s\t%s\t%s\n" % (utcnow_iso(), tool, detail_text)
+    line = "%s\tv2\t%d\t%s\t%s\n" % (
+        utcnow_iso(), 1 if relevant else 0, tool, detail_text)
     log_path = runtime_dir(root) / "activity.log"
     try:
         with open(str(log_path), "a", encoding="utf-8", newline="\n") as fh:
@@ -160,6 +200,8 @@ def write_snapshot(root, reason):
     """Forensic snapshot (runtime): git status + recent activity."""
     runtime_dir(root, create=True)
     dirty = gitutil.dirty_files(root)
+    dirty_label = ("(git state unavailable)" if dirty is None
+                   else "\n".join(dirty) or "(clean)")
     recent = gitutil.recent_log(root, 5)
     activity_tail = []
     try:
@@ -173,8 +215,8 @@ def write_snapshot(root, reason):
         "## Recent activity\n%s\n"
         % (
             reason, utcnow_iso(), gitutil.current_branch(root),
-            gitutil.head_sha(root), len(dirty),
-            "\n".join(dirty) or "(clean)",
+            gitutil.head_sha(root), len(dirty or []),
+            dirty_label,
             "\n".join(recent) or "(none)",
             "\n".join(activity_tail) or "(none)",
         )
@@ -212,19 +254,26 @@ def _activity_entries_newer_than(root, epoch):
     except OSError:
         return entries
     for line in lines:
-        parts = line.split("\t", 2)
-        if len(parts) < 2:
-            continue
-        ts = parts[0]
+        parts = line.split("\t", 4)
+        if (len(parts) == 5 and parts[1] == "v2"
+                and parts[2] in ("0", "1")):
+            ts, _version, relevant_text, tool, detail = parts
+            relevant = relevant_text == "1"
+        else:
+            parts = line.split("\t", 2)
+            if len(parts) < 2:
+                continue
+            ts = parts[0]
+            tool = parts[1]
+            detail = parts[2] if len(parts) > 2 else ""
+            relevant = None
         try:
             lt = time.strptime(ts, "%Y-%m-%dT%H:%M:%SZ")
         except ValueError:
             continue
         if calendar.timegm(lt) <= epoch:
             continue
-        tool = parts[1]
-        detail = parts[2] if len(parts) > 2 else ""
-        entries.append((tool, detail))
+        entries.append((tool, detail, relevant))
     return entries
 
 
@@ -246,8 +295,91 @@ def _strip_env_assignments(command):
     return " ".join(tokens)
 
 
+# `2>&1` merges descriptors; it is not a write to a file.
+_FD_DUP_RE = re.compile(r">&\d")
+
+
+def _shell_segments(command):
+    """Split raw shell text on unquoted control operators.
+
+    Returns ``(segments, writes_to_file)``. Quoted operators are literal, so
+    ``rg -n 'todo|fixme'`` stays one segment. Splitting happens on the RAW
+    text because ``_normalized_command`` folds newlines into spaces.
+    """
+    text = command or ""
+    segments = []
+    current = []
+    quote = ""
+    escaped = False
+    writes = False
+    index = 0
+    while index < len(text):
+        char = text[index]
+        if escaped:
+            current.append(char)
+            escaped = False
+            index += 1
+            continue
+        if char == "\\" and quote != "'":
+            current.append(char)
+            escaped = True
+            index += 1
+            continue
+        if quote:
+            current.append(char)
+            if char == quote:
+                quote = ""
+            index += 1
+            continue
+        if char in ("'", '"'):
+            quote = char
+            current.append(char)
+            index += 1
+            continue
+        if char == ">":
+            duplication = _FD_DUP_RE.match(text, index)
+            if duplication:
+                if current and current[-1].isdigit():
+                    current.pop()
+                index = duplication.end()
+                continue
+            writes = True
+            index += 1
+            continue
+        if char == "<":
+            index += 1          # input redirection reads; it does not write
+            continue
+        if char in "&|;\r\n":
+            segments.append("".join(current))
+            current = []
+            index += 1
+            continue
+        current.append(char)
+        index += 1
+    segments.append("".join(current))
+    return [s for s in (seg.strip() for seg in segments) if s], writes
+
+
+def _segment_is_read_only(segment):
+    command = _strip_env_assignments(_normalized_command(segment))
+    if not command:
+        return True
+    if command in READ_ONLY_COMMAND_EXACT:
+        return True
+    for prefix in READ_ONLY_COMMAND_PREFIXES:
+        if command == prefix.rstrip() or command.startswith(prefix):
+            return True
+    return False
+
+
 def activity_is_handoff_relevant(tool, detail=""):
-    """Return True for activity that should pressure a handoff update."""
+    """Return True for activity that should pressure a handoff update.
+
+    The read-only allowlist is consulted BEFORE any shell-operator
+    heuristic, so `git status | head` stays read-only. Every segment of a
+    pipeline or list must be allowlisted: `ls && rm -rf /` is not read-only
+    just because its first command is.
+    """
     tool_name = (tool or "").strip().lower()
     detail_text = detail or ""
     if STEWARD_STATE_MARKER in detail_text.replace("\\", "/"):
@@ -256,29 +388,34 @@ def activity_is_handoff_relevant(tool, detail=""):
         return True
     if tool_name not in SHELL_TOOLS:
         return False
-    command = _strip_env_assignments(_normalized_command(detail_text))
-    if not command:
+    segments, writes_to_file = _shell_segments(detail_text)
+    if writes_to_file:
+        return True
+    if not segments:
         return False
-    if command in READ_ONLY_COMMAND_EXACT:
-        return False
-    for prefix in READ_ONLY_COMMAND_PREFIXES:
-        if command == prefix.rstrip() or command.startswith(prefix):
-            return False
-    return True
+    return not all(_segment_is_read_only(seg) for seg in segments)
 
 
 def handoff_relevant_activity_count_since(root, epoch):
-    return sum(
-        1 for tool, detail in _activity_entries_newer_than(root, epoch)
-        if activity_is_handoff_relevant(tool, detail)
-    )
+    count = 0
+    for tool, detail, relevant in _activity_entries_newer_than(root, epoch):
+        if relevant is None:
+            relevant = activity_is_handoff_relevant(tool, detail)
+        if relevant:
+            count += 1
+    return count
 
 
 def handoff_meta(root):
     path = state_dir(root) / "HANDOFF.md"
     if not path.is_file():
         return {}, "", 0.0
-    text = path.read_text(encoding="utf-8")
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        # Unreadable or non-UTF-8. Callers include the SessionStart and Stop
+        # hooks, which must never raise; report it as absent instead.
+        return {}, "", 0.0
     meta, body = parse_front_matter(text)
     try:
         mtime = path.stat().st_mtime
@@ -295,9 +432,8 @@ def _handoff_commit(root):
 def detect_crash_signals(root, runtime_record=None):
     """Independent signals that the previous session ended abnormally.
 
-    Callers that have already claimed this session must pass the
-    pre-claim record as ``runtime_record`` — otherwise the fresh claim
-    itself reads as a crash marker.
+    ``runtime_record`` remains accepted for callers using the earlier API.
+    Active runtime markers are advisory and are reported by ``build_recap``.
     """
     signals = []
     meta, body, handoff_mtime = handoff_meta(root)
@@ -306,15 +442,6 @@ def detect_crash_signals(root, runtime_record=None):
         signals.append(
             "HANDOFF.md front matter says `session_status: active` — the "
             "previous session never wrapped."
-        )
-
-    runtime = (load_runtime_session(root) if runtime_record is None
-               else runtime_record)
-    if runtime.get("status") == "active":
-        signals.append(
-            "Local runtime marker shows an active session on this device "
-            "(%s, %s) with no close event."
-            % (runtime.get("agent", "?"), runtime.get("updated_at", "?"))
         )
 
     edits_after_handoff = handoff_relevant_activity_count_since(
@@ -326,7 +453,11 @@ def detect_crash_signals(root, runtime_record=None):
         )
 
     dirty = gitutil.dirty_files(root)
-    if dirty:
+    if dirty is None:
+        signals.append(
+            "Git could not report working-tree state (timed out or "
+            "unavailable); dirty-file and commit signals are unchecked.")
+    elif dirty:
         unmentioned = [
             d for d in dirty
             if d.split()[-1].split("/")[-1] not in body
@@ -353,6 +484,24 @@ def detect_crash_signals(root, runtime_record=None):
         signals.append("A git %s is in progress." % op)
 
     return signals
+
+
+def _runtime_notes(runtime_record):
+    if runtime_record.get("status") != "active":
+        return []
+    return [
+        "Local runtime marker is active on this device (%s, %s); this is "
+        "advisory and may represent the current, repeated, or overlapping "
+        "hook session."
+        % (runtime_record.get("agent", "?"),
+           runtime_record.get("updated_at", "?"))
+    ]
+
+
+def _dirty_count(root):
+    """Number of dirty files, or None when git could not answer."""
+    dirty = gitutil.dirty_files(root)
+    return None if dirty is None else len(dirty)
 
 
 def _plan_current(root):
@@ -401,12 +550,15 @@ def _open_questions(root):
 def build_recap(root, runtime_record=None):
     """Structured recap for session start. Read-only.
 
-    ``runtime_record`` is forwarded to ``detect_crash_signals`` (pass the
-    pre-claim record after ``claim_session``).
+    Pass the pre-claim record after ``claim_session`` so its advisory runtime
+    note describes what was present before the claim or reuse.
     """
+    from .state import load_backend
     meta, body, _ = handoff_meta(root)
     milestone, open_tasks = _plan_current(root)
     section = _extract_section(body, "## Next steps")
+    runtime = (load_runtime_session(root) if runtime_record is None
+               else runtime_record)
     recap = {
         "handoff": {
             "updated_at": meta.get("updated_at", "unknown"),
@@ -419,15 +571,17 @@ def build_recap(root, runtime_record=None):
             "is_repo": gitutil.is_repo(root),
             "branch": gitutil.current_branch(root),
             "head": gitutil.head_sha(root),
-            "dirty_count": len(gitutil.dirty_files(root)),
+            "dirty_count": _dirty_count(root),
             "in_progress": gitutil.in_progress_operation(root),
         },
         "current_milestone": milestone,
         "open_tasks": open_tasks,
+        "task_backend": load_backend(root)["name"],
         "latest_progress": _progress_head(root),
         "open_questions": _open_questions(root),
         "next_steps_excerpt": section[:600],
         "crash_signals": detect_crash_signals(root, runtime_record),
+        "runtime_notes": _runtime_notes(runtime),
     }
     return recap
 
@@ -457,19 +611,27 @@ def format_recap(recap):
            handoff["session_status"])
     )
     if git["is_repo"]:
+        dirty_count = git["dirty_count"]
+        dirty_label = ("dirty state unavailable" if dirty_count is None
+                       else "%d dirty file(s)" % dirty_count)
         lines.append(
-            "Git: branch %s @ %s, %d dirty file(s)%s"
+            "Git: branch %s @ %s, %s%s"
             % (git["branch"] or "(unborn)", git["head"] or "(no commits)",
-               git["dirty_count"],
+               dirty_label,
                ", %s IN PROGRESS" % git["in_progress"] if git["in_progress"] else "")
         )
     else:
         lines.append("Git: not a repository")
-    if recap["current_milestone"]:
+    backend = recap.get("task_backend", "markdown")
+    if backend != "markdown":
+        lines.append("Task backend: %s (PLAN.md is a milestone overview)" % backend)
+    if recap["current_milestone"] and backend == "markdown":
         lines.append(
             "Milestone: %s (%d open task(s) in PLAN.md)"
             % (recap["current_milestone"], recap["open_tasks"])
         )
+    elif recap["current_milestone"]:
+        lines.append("Milestone: %s" % recap["current_milestone"])
     if recap["latest_progress"]:
         lines.append("Latest progress entry: %s" % recap["latest_progress"])
     if recap["open_questions"]:
@@ -478,6 +640,8 @@ def format_recap(recap):
         lines.append("Next steps (from handoff):")
         for step in recap["next_steps_excerpt"].splitlines()[:6]:
             lines.append("  " + step)
+    for note in recap.get("runtime_notes", []):
+        lines.append("Runtime note: " + note)
     if recap["crash_signals"]:
         lines.append("ABNORMAL TERMINATION SUSPECTED:")
         for signal in recap["crash_signals"]:
@@ -495,19 +659,26 @@ def format_recap(recap):
 
 def append_progress(root, note, agent, prefix=""):
     path = state_dir(root) / "PROGRESS.md"
+    newline = detect_newline(path)
     header = "### %s — %s\n" % (utcnow_iso(), agent or "agent")
     entry = header + ("%s%s\n" % (prefix, note.strip())) + "\n"
     try:
         text = path.read_text(encoding="utf-8")
-    except OSError:
+    except FileNotFoundError:
         text = "# Progress log\n\nNewest first.\n\n"
+    except OSError as exc:
+        # The log exists but cannot be read. Writing the fresh template here
+        # would silently destroy the whole history.
+        raise StewardError(
+            "cannot read %s (%s). Refusing to replace the progress log with "
+            "a new one. Fix the file, then retry." % (path, exc))
     marker = "\n### "
     idx = text.find(marker)
     if idx == -1:
         new_text = text.rstrip("\n") + "\n\n" + entry
     else:
         new_text = text[: idx + 1] + entry + text[idx + 1:]
-    write_text_atomic(path, new_text)
+    write_text_atomic(path, new_text, newline=newline)
 
 
 def checkpoint(root, note, agent, auto=False):
@@ -548,7 +719,12 @@ def wrap(root, summary, agent):
     else:
         warnings.append(".project-steward/HANDOFF.md does not exist.")
 
-    for dirty in gitutil.dirty_files(root):
+    tracked_dirty = gitutil.dirty_files(root)
+    if tracked_dirty is None:
+        warnings.append(
+            "Git could not report working-tree state; unmentioned dirty "
+            "files were not checked.")
+    for dirty in tracked_dirty or []:
         name = dirty.split()[-1].split("/")[-1]
         if name and name not in body and ".project-steward" not in dirty:
             warnings.append(

@@ -170,7 +170,7 @@ def survey(root):
         "is_repo": gitutil.is_repo(root),
         "branch": gitutil.current_branch(root),
         "head": gitutil.head_sha(root),
-        "dirty_count": len(gitutil.dirty_files(root)),
+        "dirty_count": len(gitutil.dirty_files(root) or []),
         "has_remote": gitutil.has_remote(root),
         "remote_url": gitutil.remote_url(root),
         "recent_commits": gitutil.recent_log(root, 5),

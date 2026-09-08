@@ -14,4 +14,10 @@ from project_steward.cli import main
 
 
 if __name__ == "__main__":
+    # `--probe` answers "can this interpreter run Project Steward?". Reaching
+    # here already proves it: a Store stub never starts, an old interpreter
+    # fails on the import above. The wrapper probes before running the real
+    # hook so it never has to retry after output has been written.
+    if sys.argv[1:] == ["--probe"]:
+        sys.exit(0)
     sys.exit(main())

@@ -12,24 +12,31 @@ previous chat. Update it when work pauses or moves to another agent.
 
 ## Now
 
-Project Steward is set up. No project work has started.
+$project_name: $one_liner
+
+Current milestone: $first_milestone. Task backend: $backend_name.
+Project Steward is configured. Existing implementation progress has not yet
+been assessed by this scaffold; complete this handoff from the project survey.
 
 ## In flight
 
-- None.
+- Not yet assessed; inspect Git changes and the task backend.
 
 ## Next steps
 
-1. Review `.project-steward/PROJECT.md` and `.project-steward/PLAN.md`, then
-   replace the placeholder milestone and tasks.
+1. Review `.project-steward/PROJECT.md` and the $backend_name task backend for
+   $first_milestone; identify the first executable task.
+2. Complete the milestone overview in `.project-steward/PLAN.md` and this handoff
+   from verified project state before beginning implementation.
 
 ## Blockers
 
-- None.
+- Not yet assessed.
 
 ## Key files
 
-- None yet.
+- `.project-steward/PLAN.md`: milestone goals and task overview.
+- `.project-steward/backend.json`: task source of truth.
 
 ## Tried and rejected
 
