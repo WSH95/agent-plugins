@@ -68,13 +68,15 @@ them:
 hooks = true
 ```
 
-Then copy the Codex hook config into each target project where you want
-Project Steward lifecycle behavior:
+`project-steward init` writes `.codex/config.toml` and `.codex/hooks.json`
+for the project it initializes, so most projects need no manual step
+(`--no-codex-hooks` opts out). To add the hooks to a project that was
+initialized earlier, copy the packaged config from this repository:
 
 ```bash
 cd /path/to/your-project
 mkdir -p .codex
-cp /path/to/project-steward/plugin-src/codex/hooks/hooks.json .codex/hooks.json
+cp /path/to/agent-plugins/project-steward/codex/hooks/hooks.json .codex/hooks.json
 ```
 
 Open `/hooks` in Codex and review/trust the hook configuration before
