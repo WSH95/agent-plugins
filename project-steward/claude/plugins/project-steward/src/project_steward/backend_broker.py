@@ -4,11 +4,12 @@ Principle: the user should not need to already know Backlog.md, beads,
 CCPM, Taskmaster, Spec Kit, or GitHub Issues. The broker explains options
 in plain English, never installs or switches anything silently, and
 enforces single ownership of fine-grained tasks (an external backend owns
-tasks -> PLAN.md becomes milestones + a pointer).
+tasks -> PLAN.md holds milestone goals and a focused task overview).
 """
 from __future__ import annotations
 
 import shutil
+import json
 from pathlib import Path
 
 from . import gitutil
@@ -255,32 +256,38 @@ def _migration_hint(signals):
 
 
 def adopt(root, name, assume_yes=False, confirm=None):
-    """Adopt *name* as the task backend. Shows an AGENTS.md diff and asks
+    """Adopt *name* as the task backend. Shows instruction/state diffs and asks
     for approval (unless assume_yes). Returns a report dict."""
     if name not in BACKENDS or name in STUBS:
         return {"ok": False, "error": "Unknown or stub backend: %s" % name}
     root = Path(root)
-    agents_path = root / "AGENTS.md"
-    old = agents_path.read_text(encoding="utf-8") if agents_path.exists() else ""
+    # Older projects keep their inline protocol until reviewed re-init.
+    workflow = state_dir(root) / "WORKFLOW.md"
+    instructions = workflow if workflow.is_file() else root / "AGENTS.md"
+    old = instructions.read_text(encoding="utf-8") if instructions.exists() else ""
     new = upsert_block(old or "# Project\n", "task-backend",
                        task_backend_block({"backend_name": name}))
-    diff = unified_diff(old, new, "AGENTS.md")
-    if diff and not assume_yes:
+    diff = unified_diff(old, new, instructions.relative_to(root).as_posix())
+    backend = load_backend(root)
+    updated_backend = dict(backend, name=name, adopted_at=utcnow_iso())
+    diff += unified_diff(json.dumps(backend, indent=2, sort_keys=True) + "\n",
+                         json.dumps(updated_backend, indent=2, sort_keys=True) + "\n",
+                         ".project-steward/backend.json")
+    if not assume_yes:
         approved = confirm(diff) if confirm else False
         if not approved:
             return {"ok": False, "error": "Not approved; no changes written.",
                     "diff": diff}
     if new != old:
-        write_text_atomic(agents_path, new)
-    backend = load_backend(root)
-    backend.update({"name": name, "adopted_at": utcnow_iso()})
-    save_backend(root, backend)
+        write_text_atomic(instructions, new)
+    save_backend(root, updated_backend)
     pointer_note = ""
     if name != "markdown":
         pointer_note = (
-            "Reminder: %s now owns fine-grained tasks. Trim "
-            ".project-steward/PLAN.md to milestones + a pointer (never two "
-            "task lists)." % BACKENDS[name]["display"]
+            "Reminder: %s now owns detailed tasks. Keep milestone goals and "
+            "a dated overview with task IDs in .project-steward/PLAN.md. "
+            "Refresh HANDOFF.md from verified progress; preserve existing "
+            "tasks until their migration is confirmed." % BACKENDS[name]["display"]
         )
     return {"ok": True, "backend": name, "diff": diff,
             "pointer_note": pointer_note,

@@ -5,13 +5,26 @@
 - Core behavior lives in Python (3.7+, standard library only): pathlib
   paths, subprocess git calls, json/difflib/string.Template. No canonical
   hook depends on Bash; the v0.1 shell scripts are gone.
-- Atomic writes use tempfile + os.replace (safe on NTFS); text is written
-  UTF-8 with "\n" newlines for deterministic diffs on all OSes.
-- Paths with spaces, Unicode, drive letters, and nested repos are handled
-  by pathlib + argument-list subprocess calls (no shell string
-  interpolation).
+- Atomic writes use tempfile + os.replace (safe on NTFS). Generated text uses
+  UTF-8 and LF (`"\n"`) newlines for deterministic diffs on all OSes. Raw
+  migration backup files retain the original bytes, including CRLF newlines.
+- Paths with spaces, Unicode, drive letters, and nested repos use pathlib,
+  os.path, and argument-list subprocess calls (no shell string interpolation).
+  Commit paths keep their lexical final component so symlinks remain symlinks;
+  resolved parent checks reject repository escapes. Git supplies operation
+  metadata paths for ordinary repositories, worktrees, and `.git` files.
 
-## Python 3.7 floor — deliberate compatibility choices
+## Supported Python versions and CI
+
+- Ubuntu supports Python 3.7 and later. Windows and macOS require Python 3.10
+  or later. The package metadata and shared core keep a Python 3.7 floor.
+- CI requests exactly 11 combinations:
+  - `ubuntu-latest`: Python 3.8, 3.10, 3.12, and 3.13.
+  - `ubuntu-22.04`: Python 3.7.
+  - `windows-latest`: Python 3.10, 3.12, and 3.13.
+  - `macos-latest`: Python 3.10, 3.12, and 3.13.
+
+## Python 3.7 compatibility choices
 
 - `tomllib` (3.11+) is used when present; otherwise `tomlmini` parses the
   documented flat-TOML subset of config.toml (sections, strings, ints,
@@ -19,9 +32,9 @@
 - No walrus operator, no builtin-generic annotations at runtime
   (`from __future__ import annotations`), no `shutil.copytree(...,
   dirs_exist_ok=...)`, no `str.removeprefix`.
-- Python 3.7 is end-of-life upstream; supported here because lab
-  machines, clusters, and embedded robots (e.g. Jetson images) still run
-  it. CI pins 3.7 jobs to runners that still provide it.
+- Python 3.7 is end-of-life upstream; Ubuntu support remains because lab
+  machines, clusters, and embedded robots (e.g. Jetson images) still run it.
+  CI pins the 3.7 job to `ubuntu-22.04`.
 
 ## Hook commands
 

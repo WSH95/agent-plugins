@@ -1,5 +1,8 @@
-"""Security helpers: secret detection for committed steward files and a
-risky-command classifier. See references/security-model.md."""
+"""Secret detection for committed steward files.
+
+`doctor` is the only caller. Risky-command policy lives in the agent
+skills, not here: see references/security-model.md.
+"""
 from __future__ import annotations
 
 import re
@@ -22,24 +25,6 @@ PLACEHOLDER_HINT_RE = re.compile(
     r"(?i)(changeme|placeholder|example|sample|dummy|redacted|"
     r"your[-_]|x{4,}|\$\{|<[^>]+>)")
 
-RISKY_COMMAND_PATTERNS = [
-    (re.compile(r"\brm\s+-[rRf]{2,}\s+(/|~|\$HOME)"), "broad recursive deletion"),
-    (re.compile(r"curl[^|\n]*\|\s*(ba)?sh"), "pipe remote script to shell"),
-    (re.compile(r"wget[^|\n]*\|\s*(ba)?sh"), "pipe remote script to shell"),
-    (re.compile(r"\bchmod\s+777\b"), "world-writable permissions"),
-    (re.compile(r"\bdd\s+if="), "raw disk write"),
-    (re.compile(r">\s*/dev/sd[a-z]"), "raw disk write"),
-    (re.compile(r"git\s+push\s+.*--force"), "force push"),
-    (re.compile(r"git\s+push\b"), "push to remote (needs explicit approval)"),
-    (re.compile(r"(>>?\s*~?/?\.(bashrc|zshrc|profile|bash_profile))"),
-     "shell profile edit"),
-    (re.compile(r"\b(npm|pip|pipx|cargo|gem|brew|apt(-get)?|choco|winget)\s+install\b"),
-     "package installation (needs explicit approval)"),
-    (re.compile(r"(?i)\b(aws|gcloud|az)\s+.*(secret|credential|key)"),
-     "cloud credential access"),
-]
-
-
 def scan_text_for_secrets(text, origin=""):
     findings = []
     for pattern, label in SECRET_PATTERNS:
@@ -53,16 +38,3 @@ def scan_text_for_secrets(text, origin=""):
                                 and bool(PLACEHOLDER_HINT_RE.search(snippet))),
             })
     return findings
-
-
-def classify_command(command):
-    """Return list of (label) risk findings for a shell command string."""
-    return [label for pattern, label in RISKY_COMMAND_PATTERNS
-            if pattern.search(command or "")]
-
-
-def redact(text):
-    out = text
-    for pattern, _label in SECRET_PATTERNS:
-        out = pattern.sub("[REDACTED]", out)
-    return out

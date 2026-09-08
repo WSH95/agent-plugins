@@ -1,13 +1,11 @@
 # Plan
 
-Use this file for milestones and tasks. If another task system is adopted,
-keep milestone summaries and a link here instead of copying its task list.
+$plan_intro
 
 ## $first_milestone
 
-- [ ] Define the first concrete task.
-- [ ] Add another task if needed.
+$milestone_work
 
 ## Later
 
-- [ ] Add work that does not belong in the current milestone.
+Record future milestone goals here; detailed tasks belong to the selected backend.

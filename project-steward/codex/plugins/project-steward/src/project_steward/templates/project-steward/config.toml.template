@@ -9,13 +9,11 @@ auto_handoff_cooldown_min = 45
 auto_handoff_min_edits = 5
 
 [git]
-# commit_policy: "ask" (propose only), "auto" (agent may run `wrap
-# --commit`), "never".
-commit_policy = "ask"
+# commit_policy: "auto" (agent commits verified work at meaningful milestones),
+# "ask" (propose before committing), "never" (no commits or nudges).
+commit_policy = "$commit_policy"
 never_push = true
-
-[backend]
-name = "$backend_name"
 
 [init]
 run_project_scripts = false
+codex_hooks = $codex_hooks

@@ -49,5 +49,10 @@ keep separate hand-maintained Claude and Codex copies of shared skill text.
   `commands/`, `hooks/`, `.claude-plugin/`). Do not author a third
   `plugin-src/grok/` copy of shared files.
 - Generated dist folders must be reproducible from source.
+- Build tools must identify an existing generated folder from stable platform
+  manifests before replacing it. They must reject Git metadata and unrelated
+  nonempty directories.
+- Publication previews use a temporary checkout and print the artifact diff.
+  A supplied target checkout must remain clean and unchanged.
 - Tests should prove important generated files exist and unrelated platform
   files do not leak into the wrong payload.

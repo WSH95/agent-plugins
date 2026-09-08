@@ -12,8 +12,6 @@ cold. Interview first, generate second, approve before writing.
 
 - `.project-steward/` exists → offer **audit** (run `project-steward
   doctor`) or **re-init** (only fills gaps; never overwrites state files).
-- `.projectforge/` exists → propose `project-steward migrate` (approval
-  gated) before or alongside init.
 - Directory empty (no files, no git) → skip to Phase 2's empty-project
   interview.
 - Existing `CLAUDE.md`, `.cursorrules`, or Copilot instructions → read
@@ -39,7 +37,9 @@ Ask at most 2 rounds of 3–5 batched questions (use `ask_user_question`
 or AskUserQuestion when available). Only ask what the survey could not answer or what requires
 user intent: primary focus, build/test/lint commands, conventions to
 enforce, task-backend preference (delegate the explanation to the
-backend-broker skill), git policy, first milestone.
+backend-broker skill), git policy, first milestone. Present automatic local
+milestone commits as the default for new projects; preserve existing settings.
+Codex setup is included for every project, with --no-codex-hooks to opt out.
 
 Empty project: run a discovery interview instead — purpose, users,
 problem, non-goals, target/forbidden stack, deployment, data needs,
@@ -60,15 +60,19 @@ Never guess an unanswered load-bearing question — record it in
 2. Map the interview answers onto init flags and preview without writing:
    `project-steward init --project-name "..." --one-liner "..."
    --primary-language "..." --build-command "..." --test-command "..."
-   --lint-command "..." --backend markdown --first-milestone "..."
+   --lint-command "..." --backend <selected-backend> --first-milestone "..."
+   --commit-policy <auto|ask|never>
    --dry-run` — this prints the create/update/keep file plan plus full
    diffs for `AGENTS.md`, `CLAUDE.md`, and `.gitignore`, and writes
-   nothing. (Without the CLI: compose the same draft yourself from
+   nothing. Include the WORKFLOW.md and Codex config/hook previews.
+   Existing Codex config is preserved; unsupported inline hooks or malformed
+   hook JSON are reported without overwriting them. (Without the CLI: compose the same draft yourself from
    `../../src/project_steward/templates/`, preserving any existing user
    content and editing only inside managed blocks.) A representative new
-   `AGENTS.md` should be about 40-45 lines and must stay below 50 lines. Keep
-   the project context plus the three managed blocks: `commands`,
-   `task-backend`, and `agent-session-protocol`.
+   `AGENTS.md` stays below 35 lines: project identity, stack, `commands`, and
+   an `agent-session-protocol` pointer requiring the agent to read
+   `.project-steward/WORKFLOW.md`. Detailed stewardship and task-backend
+   instructions live in that document, which also works without plugin skills.
 3. Paste the complete AGENTS.md draft (fenced; or diff, if the file
    exists) and the file plan into your reply — the user-visible message
    text — BEFORE asking anything. Thinking, subagent transcripts,
@@ -78,9 +82,14 @@ Never guess an unanswered load-bearing question — record it in
 4. Get explicit approval (AskUserQuestion / `ask_user_question` is fine for the question
    itself), then apply by re-running the same flags with `--dry-run`
    replaced by `--yes`, so blocks and state files are written
-   deterministically and idempotently. Then edit the generated
-   `.project-steward/PROJECT.md` and `PLAN.md` with the interview's real
-   content.
+   deterministically and idempotently. Then populate `PROJECT.md`, `PLAN.md`, and the entire `HANDOFF.md` body
+   with survey/interview facts: purpose, milestone goals, current implementation
+   state, unfinished work, blockers, validation evidence, and executable next
+   steps. Record the setup and selected backend/policy in `PROGRESS.md`.
+   With an external backend, PLAN.md includes a dated overview of active,
+   blocked, next, and recently completed work with task IDs. Backend tasks
+   remain authoritative. Identify unknowns instead of claiming no work exists.
+   Initialization is incomplete until these document bodies are useful.
 5. `CLAUDE.md` must stay a thin adapter that imports `@AGENTS.md`
    (Claude Code does not read AGENTS.md natively).
 
@@ -89,19 +98,25 @@ Never guess an unanswered load-bearing question — record it in
 Not a repo → ask, then assist: `git init`, review `.gitignore`
 (the managed block ignores `.project-steward/runtime/`), initial commit
 `chore: initialize Project Steward project management`. Already a repo →
-propose that commit. **Never force git init; never push.**
+follow the configured commit policy. Under auto, review the initialization
+changes and commit related files, including `.project-steward/` and any new
+`.codex/` files; under ask, propose the concrete commit. Under never, skip it.
+Use explicit paths/hunks and preserve unrelated staged and unstaged changes. **Never force git init; never push.**
 
 ## Phase 5 — Summary
 
 ≤ 10 lines: what was created, what was inferred vs. asked, open
 questions recorded, and the suggested next command
 (`/project-steward:resume` next session; on Grok, `/session-resume` —
-bare `/resume` is Grok's native session picker).
+bare `/resume` is Grok's native session picker). For Codex, distinguish files
+installed from hooks active: the CLI must be on PATH, the project trusted, and
+new hooks reviewed through `/hooks`. Do not claim activation from file creation.
 
 ## Interop
 
 - Built-in `/init` (Claude Code) or Codex init output may be used as raw
   survey input; Project Steward owns the final interview and files.
 - CCPM / Spec Kit / Taskmaster / beads detected → don't duplicate their
-  role; see the backend-broker skill and keep PLAN.md as milestones + a
-  pointer.
+  role; see the backend-broker skill and keep milestone goals and the focused
+  dated task overview in PLAN.md. If the backend cannot be read, retain its
+  last verified overview and record the access limitation and next check.

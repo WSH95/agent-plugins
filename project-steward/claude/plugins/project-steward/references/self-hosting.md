@@ -10,12 +10,11 @@ Maintenance protocol for future agents:
 
 1. Read `.project-steward/HANDOFF.md`; run `project-steward resume`.
 2. Run `project-steward doctor --self` before and after changes.
-3. Preserve migration compatibility (`.projectforge/` detection, the
-   `projectforge` alias) until a documented deprecation window ends.
-4. Keep Ubuntu/Windows/macOS support; no Bash-only core behavior.
-5. Update tests when changing templates, hooks, CLI surface, or state
+3. Keep Ubuntu (Python 3.7+) and Windows/macOS (Python 3.10+) support;
+   no Bash-only core behavior.
+4. Update tests when changing templates, hooks, CLI surface, or state
    schema; keep `python -m pytest` green.
-6. Checkpoint PROGRESS.md/HANDOFF.md at boundaries; propose Conventional
+5. Checkpoint PROGRESS.md/HANDOFF.md at boundaries; propose Conventional
    Commits; never push without approval.
 
 Durable-but-not-noisy rule: the repo commits its own steward state files,

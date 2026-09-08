@@ -13,9 +13,10 @@ import json
 import sys
 from pathlib import Path
 
-from . import __version__, backend_broker, doctor, gitutil, hooks, migrate
+from . import StewardError, __version__
+from . import backend_broker, doctor, gitutil, hooks
 from . import scaffold, sessions, survey as survey_mod
-from .paths import find_project_root, has_legacy_state, is_steward_project
+from .paths import find_project_root, is_steward_project
 from .state import load_backend, load_config, load_state
 
 
@@ -75,9 +76,6 @@ def cmd_survey(args):
 
 def cmd_init(args):
     root = _root(args)
-    if has_legacy_state(root) and not is_steward_project(root):
-        _print("Legacy .projectforge/ found. Run `project-steward migrate` "
-               "first (or alongside init).", False)
     answers = {
         "project_name": args.project_name,
         "one_liner": args.one_liner,
@@ -87,6 +85,8 @@ def cmd_init(args):
         "lint_command": args.lint_command,
         "backend_name": args.backend,
         "first_milestone": args.first_milestone,
+        "commit_policy": args.commit_policy,
+        "codex_hooks": args.codex_hooks,
     }
     plan, mapping = scaffold.plan_files(root, answers)
     creates = [k for k, v in plan.items() if v[0] == "create"]
@@ -98,13 +98,19 @@ def cmd_init(args):
         for rel in sorted(creates):
             _print("  create: %s" % rel, False)
         for rel in sorted(updates):
-            _print("  update: %s (managed blocks only)" % rel, False)
+            _print("  update: %s" % rel, False)
         for rel in sorted(skips):
             _print("  keep:   %s (exists)" % rel, False)
-        for rel in ("AGENTS.md", "CLAUDE.md", ".gitignore"):
+        for rel in ("AGENTS.md", "CLAUDE.md", ".gitignore",
+                    ".project-steward/WORKFLOW.md", ".project-steward/config.toml",
+                    ".codex/config.toml", ".codex/hooks.json"):
             diff = plan.get(rel, ("", None, ""))[2]
+            if not diff and plan.get(rel, ("",))[0] == "create":
+                diff = plan[rel][1]
             if diff:
                 _print("\n--- diff for %s ---\n%s" % (rel, diff), False)
+    for warning in mapping.get("_warnings", []):
+        _print("warn: %s" % warning, False)
     if args.dry_run:
         return 0
     if not args.yes:
@@ -115,15 +121,23 @@ def cmd_init(args):
     written = scaffold.apply_plan(root, plan, mapping)
     _print("Wrote %d file(s): %s" % (len(written), ", ".join(sorted(written))),
            False)
+    if ".codex/hooks.json" in plan and plan[".codex/hooks.json"][0] != "skip":
+        _print("Codex hook files configured. Ensure project-steward is on PATH, "
+               "trust the project, and review hooks in Codex /hooks; "
+               "activation has not been verified.", False)
+    if load_config(root)["git"]["commit_policy"] == "never":
+        return 0
     if not gitutil.is_repo(root):
         _print("Note: not a git repository. Recommended (with user "
                "approval): git init && git add -A && git commit -m "
                "\"chore: initialize Project Steward project management\"",
                False)
     else:
+        commit_paths = ["AGENTS.md", "CLAUDE.md", ".gitignore"]
+        commit_paths.extend(path for path in written if path.startswith(".codex/"))
         _print("Suggested commit: %s" % gitutil.suggest_commit_command(
             root, "chore: initialize Project Steward project management",
-            ["AGENTS.md", "CLAUDE.md", ".gitignore"]), False)
+            commit_paths), False)
     return 0
 
 
@@ -148,7 +162,8 @@ def cmd_resume(args):
     root = _root(args)
     if not is_steward_project(root):
         return cmd_status(args)
-    previous, _record = sessions.claim_session(root, args.agent)
+    previous, _record = sessions.claim_session(
+        root, args.agent, reuse_current=True)
     recap = sessions.build_recap(root, runtime_record=previous)
     if args.json:
         recap["previous_runtime_claim"] = previous
@@ -167,6 +182,9 @@ def cmd_checkpoint(args):
         _print("Not a Project Steward project.", False)
         return 1
     sessions.checkpoint(root, args.note, args.agent, auto=args.auto)
+    if args.json:
+        _print({"ok": True, "checkpoint": True, "auto": bool(args.auto)}, True)
+        return 0
     _print("Checkpoint recorded in PROGRESS.md; HANDOFF.md front matter "
            "refreshed.", False)
     return 0
@@ -178,6 +196,9 @@ def cmd_wrap(args):
         _print("Not a Project Steward project.", False)
         return 1
     report = sessions.wrap(root, args.summary, args.agent)
+    if args.json and not args.commit:
+        _print(dict(report, ok=True, session_status="closed"), True)
+        return 0
     for warning in report["warnings"]:
         _print("warn: %s" % warning, False)
     if report["commit_suggestion"]:
@@ -189,6 +210,9 @@ def cmd_wrap(args):
                 [".project-steward", "AGENTS.md", "CLAUDE.md", ".gitignore"],
             )
             _print(out or ("commit rc=%d" % rc), False)
+            if rc:
+                _print("Session bookkeeping saved, but commit failed.", False)
+                return rc
         else:
             _print("suggested: %s" % report["commit_suggestion"], False)
             _print("(run with --commit to let the CLI perform it; never "
@@ -203,6 +227,9 @@ def cmd_close(args):
         _print("Not a Project Steward project.", False)
         return 1
     sessions.close_only(root, args.agent)
+    if args.json:
+        _print({"ok": True, "session_status": "closed", "wrapped": False}, True)
+        return 0
     _print("Session marked closed (quick close; handoff body untouched). "
            "Prefer `wrap` when real work happened.", False)
     return 0
@@ -220,38 +247,6 @@ def cmd_doctor(args):
     return 1 if fails else 0
 
 
-def cmd_migrate(args):
-    root = _root(args)
-    if not has_legacy_state(root):
-        _print("No legacy .projectforge/ directory found.", False)
-        return 1
-    if not args.yes:
-        _print("This will back up .projectforge/, move its state into "
-               ".project-steward/, convert markers/config, and remove the "
-               "legacy directory.", False)
-        if not _confirm("Proceed with migration?"):
-            _print("Aborted; nothing changed.", False)
-            return 1
-    report = migrate.migrate(root, project_name=args.project_name or "")
-    if args.json:
-        _print(report, True)
-        return 0 if report.get("ok") else 1
-    if not report.get("ok"):
-        _print("error: %s" % report.get("error"), False)
-        return 1
-    _print("Migrated: %s" % (", ".join(report["moved"]) or "(nothing to move)"),
-           False)
-    for note in report["notes"]:
-        _print("note: %s" % note, False)
-    if report["agents_diff"]:
-        _print("\nAGENTS.md changes:\n%s" % report["agents_diff"], False)
-    _print("Suggested commit: %s" % gitutil.suggest_commit_command(
-        root, "chore(steward): migrate Projectforge state to Project Steward",
-        [".project-steward", ".projectforge", "AGENTS.md", ".gitignore"]),
-        False)
-    return 0
-
-
 def cmd_backend(args):
     root = _root(args)
     action = args.action
@@ -266,15 +261,18 @@ def cmd_backend(args):
         _print("Backend recommendation (signals: %s)"
                % json.dumps(rec["signals"]), False)
         for entry in rec["ranked"][:5]:
-            _print("  %3d  %-28s %s"
-                   % (entry["score"], entry["display"], entry["plain"]),
+            # Print the identifier too: `adopt` takes `spec_kit`, not
+            # "GitHub Spec Kit".
+            _print("  %3d  %-16s %-28s %s"
+                   % (entry["score"], entry["name"], entry["display"],
+                      entry["plain"]),
                    False)
             if entry["repo"]:
                 _print("       %s" % entry["repo"], False)
         if rec["migration_hint"]:
             _print("hint: %s" % rec["migration_hint"], False)
         _print("Adopt with: project-steward backend adopt <name> "
-               "(shows an AGENTS.md diff and asks for approval)", False)
+               "(previews workflow/backend changes for approval)", False)
         return 0
     if action == "adopt":
         if not args.name:
@@ -282,7 +280,7 @@ def cmd_backend(args):
             return 2
         report = backend_broker.adopt(
             root, args.name, assume_yes=args.yes,
-            confirm=lambda diff: (_print("\nProposed AGENTS.md change:\n"
+            confirm=lambda diff: (_print("\nProposed backend changes:\n"
                                          + diff, False)
                                   or _confirm("Apply this change?")))
         if not report.get("ok"):
@@ -334,8 +332,13 @@ def build_parser():
     p.add_argument("--build-command")
     p.add_argument("--test-command")
     p.add_argument("--lint-command")
-    p.add_argument("--backend", default="markdown")
+    p.add_argument("--backend", choices=sorted(
+        set(backend_broker.BACKENDS) - backend_broker.STUBS))
     p.add_argument("--first-milestone")
+    p.add_argument("--commit-policy", choices=("auto", "ask", "never"),
+                   help="policy for a new config (default: auto; existing configs kept)")
+    p.add_argument("--no-codex-hooks", dest="codex_hooks", action="store_false",
+                   default=None, help="skip project-local Codex hook setup")
     p.add_argument("--yes", action="store_true")
     p.add_argument("--dry-run", action="store_true")
     p.set_defaults(func=cmd_init)
@@ -370,12 +373,6 @@ def build_parser():
                    help="extra checks for the Project Steward repo itself")
     p.set_defaults(func=cmd_doctor)
 
-    p = common(sub.add_parser("migrate",
-                              help="migrate legacy .projectforge/ state"))
-    p.add_argument("--yes", action="store_true")
-    p.add_argument("--project-name")
-    p.set_defaults(func=cmd_migrate)
-
     p = common(sub.add_parser("backend", help="task-backend broker"))
     p.add_argument("action",
                    choices=["detect", "recommend", "adopt", "status"])
@@ -391,6 +388,10 @@ def build_parser():
 
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
+    # Internal: the hook wrapper asks "can you run?" before running a hook
+    # for real, so it never has to retry after output has been written.
+    if argv == ["--probe"]:
+        return 0
     # `hook` passes remaining args straight to the dispatcher.
     if argv and argv[0] == "hook":
         return hooks.main(argv[1:])
@@ -404,6 +405,9 @@ def main(argv=None):
     except scaffold.TemplateError as exc:
         sys.stderr.write("error: %s\n" % exc)
         return 2
+    except StewardError as exc:
+        sys.stderr.write("error: %s\n" % exc)
+        return 1
 
 
 if __name__ == "__main__":

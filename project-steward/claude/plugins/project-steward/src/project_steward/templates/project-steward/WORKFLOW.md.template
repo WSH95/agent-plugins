@@ -1,0 +1,79 @@
+# Project Steward workflow
+
+Read this document before working on the project. Project-specific rules in
+AGENTS.md and explicit user instructions take precedence.
+
+## Project records
+
+- PROJECT.md describes the purpose, constraints, and success criteria.
+- PLAN.md holds milestone goals and either detailed tasks or a backend overview.
+- HANDOFF.md records current state and executable next steps.
+- PROGRESS.md records changes; DECISIONS.md records decisions and their reasons.
+- QUESTIONS.md, RISKS.md, and VERIFY.md track unknowns, risks, and validation.
+- config.toml controls commit and session preferences. backend.json identifies
+  the authoritative task backend.
+
+Invalid known config values use safe defaults and are reported by
+`project-steward doctor`; valid unrelated settings remain available.
+
+All these files live in `.project-steward/`. Runtime files are local and ignored
+by Git; durable records travel with the repository.
+
+## Start a session
+
+Read HANDOFF.md, then run `project-steward resume` when the CLI is available.
+Recap the task, next step, blockers, open questions, Git state, and crash signals.
+Without the CLI, read PROGRESS.md, PLAN.md, QUESTIONS.md, the selected backend,
+and recent Git history. Label reconstructed state as inferred. Resume does not
+rewrite committed project records. Treat an active local runtime marker as an
+advisory note; use separate handoff, activity, dirty-work, commit, or
+Git-operation evidence to decide whether recovery is needed.
+
+## Record meaningful changes
+
+When work starts, completes, becomes blocked, or changes direction, update the
+relevant project records. Record validation results in VERIFY.md and PROGRESS.md.
+Refresh HANDOFF.md's Now, In flight, Next steps, and Blockers when they change.
+`project-steward checkpoint --note "..."` appends progress and refreshes metadata;
+it does not write a substantive handoff body or query an external task backend.
+Do not rewrite files when nothing material changed.
+
+## Commit coherent work
+
+Read `[git] commit_policy` in config.toml. New projects default to `auto`;
+existing settings remain in force. Missing or invalid legacy settings use `ask`.
+
+- `auto`: after a coherent task, fix, tested refactor, or milestone, run the
+  relevant checks, review the diff and staged changes, then commit the related
+  code, tests, task artifacts, and project records together without asking again.
+- `ask`: prepare a concrete commit and ask before committing.
+- `never`: do not commit or nudge for a commit.
+
+Use Conventional Commits and explicit paths or hunks. For whole-file commits with
+unrelated changes already staged, use `git commit --only -m "..." -- <paths>`
+so those staged changes remain untouched. If a file mixes user and agent changes
+and the intended hunks cannot be isolated safely, skip the automatic commit. Preserve unrelated and
+pre-existing changes. If ownership is unclear or relevant checks fail, explain
+why a code commit was skipped and keep the handoff accurate. Avoid empty or
+timer-driven commits. Hooks only prompt for bookkeeping; they never commit.
+`wrap --commit` is a stewardship-file convenience, not a complete feature commit.
+Never push, force-push, or rewrite published history without explicit approval.
+
+## Finish or hand off
+
+Write HANDOFF.md for someone without the previous chat: completed work, unfinished
+work, blockers, validation evidence, useful file paths, and concrete next steps.
+Keep this level of detail with every task backend. Update the other records,
+then run `project-steward wrap --summary "..."` when available and follow the
+commit policy. A metadata-only checkpoint cannot replace an updated handoff body.
+
+## Maintain instructions and hooks
+
+Treat AGENTS.md and CLAUDE.md as user-owned. Edit only PROJECT-STEWARD managed
+blocks, show their diff first, and record approved changes in DECISIONS.md.
+Keep CLAUDE.md a thin @AGENTS.md adapter. Preserve custom workflow guidance.
+
+Initialization includes project-local Codex hooks unless --no-codex-hooks is
+selected. The CLI must be installed on PATH for those hooks. Codex still requires
+project trust and hook review through `/hooks`; installed files alone do not prove
+activation. The session protocol above also works without hooks or installed skills.

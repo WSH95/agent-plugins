@@ -9,11 +9,18 @@ condensed protocol:
 2. Write plain, factual notes. If a `humanizer` skill is available, apply it
    only to the changed prose and preserve facts, required headings, and file
    structure.
-3. Update PLAN.md checkboxes, DECISIONS.md, QUESTIONS.md, RISKS.md,
-   VERIFY.md as applicable.
+3. Update tasks in the selected backend (PLAN.md for Markdown), plus
+   DECISIONS.md, QUESTIONS.md, RISKS.md, VERIFY.md. With external backends,
+   refresh PLAN.md's dated overview of active, blocked, next, and recent task
+   IDs. If access fails, retain and qualify the last verified overview and
+   add an executable reconciliation step. Keep the full handoff in all cases.
 4. `project-steward wrap --summary "one-line summary"` (sets
    session_status: closed, appends PROGRESS.md, prints warnings) - or do
    those steps manually, newest-first in PROGRESS.md.
-5. Propose a Conventional Commit including .project-steward/ per
-   config.toml commit_policy. An uncommitted handoff cannot cross
-   devices. Never push.
+5. Follow config.toml commit_policy: auto commits coherent verified code,
+   tests, task artifacts, and project records together without another question;
+   ask proposes that concrete commit; never skips commits and nudges. Review
+   the diff/index, select explicit paths/hunks, and preserve unrelated changes.
+   If checks fail or ownership is unclear, explain the skipped code commit.
+   wrap --commit covers stewardship files only; verify its result. An
+   uncommitted handoff cannot travel via Git. Never push.
