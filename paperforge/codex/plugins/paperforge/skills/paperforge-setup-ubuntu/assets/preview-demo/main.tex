@@ -1,0 +1,19 @@
+\documentclass{report}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath}
+\usepackage{iftex}
+\ifXeTeX
+  \usepackage{fontspec}
+  \setmainfont{Latin Modern Roman}
+\fi
+\usepackage[backend=biber,style=numeric]{biblatex}
+\addbibresource{references.bib}
+\usepackage{hyperref}
+\title{Paperforge Preview Check}
+\author{Synthetic setup fixture}
+\date{}
+\begin{document}
+\maketitle
+\input{chapters/introduction}
+\printbibliography
+\end{document}
