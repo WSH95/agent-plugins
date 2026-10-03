@@ -1,6 +1,6 @@
 ---
 name: agent-artifact-maintainer
-description: Use when developing, reorganizing, packaging, or publishing agent skills/plugins; when skill or plugin repos have duplicated payload folders, messy layouts, missing build/dist scripts, unclear Claude/Codex/Grok distribution paths, or need PR publishing into agent-skills or agent-plugins.
+description: Use when organizing skill/plugin development repositories, maintaining build and distribution scripts, generating install payloads, or publishing those payloads through pull requests.
 ---
 
 # Agent Artifact Maintainer
@@ -8,6 +8,10 @@ description: Use when developing, reorganizing, packaging, or publishing agent s
 Maintain agent skill/plugin development projects as development repos, not
 raw install folders. Preserve one single canonical source, generate install
 payloads, keep docs/tests aligned, and publish reviewable PRs.
+
+Apply this workflow to source layouts, build/dist tooling, and artifact
+publication. General questions about Claude's capabilities and runtime-only
+plugin fixes do not call for artifact maintenance.
 
 ## Workflow
 

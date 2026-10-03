@@ -1,12 +1,16 @@
 ---
 name: backend-broker
-description: Choose, explain, adopt, or migrate a task/spec backend (built-in Markdown, Backlog.md, beads, CCPM, Taskmaster, GitHub Spec Kit, GitHub Issues) for a Project Steward project. Use when the user asks which task tracker or issue system to use, mentions any of those tools, complains that PLAN.md is getting unwieldy or tasks are a mess, plans multi-agent or PRD-driven work, or during project-init's backend question. The user should NOT need to know these tools in advance - explain in plain English, get approval, never install anything silently.
+description: Use when choosing, comparing, adopting, or migrating a Project Steward task/spec backend, during initialization’s backend choice, or when task complexity has outgrown PLAN.md.
 ---
 
 # Backend broker
 
 One system owns fine-grained tasks at a time. The broker's job is to pick
 it deliberately, explain it plainly, and switch it safely.
+
+Select this workflow for backend choice, adoption, or migration. An
+incidental mention of a tracker, or a general question about multi-agent
+terminology, does not establish a task-ownership decision.
 
 ## Flow
 

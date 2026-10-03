@@ -142,8 +142,10 @@ def run_checks(root, self_mode=False):
                "CLAUDE.md imports @AGENTS.md",
                "" if has_import else "no @AGENTS.md import found")
     else:
-        _check(results, WARN, "CLAUDE.md", "missing (Claude Code will not "
-                                           "read AGENTS.md by itself)")
+        _check(results, WARN, "CLAUDE.md",
+               "missing compatibility adapter; native AGENTS.md support "
+               "depends on Claude Code version and settings; add a "
+               "CLAUDE.md with @AGENTS.md for compatibility")
 
     from .codex_setup import inspect_setup
     init_config = load_config(root).get("init", {})

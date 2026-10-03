@@ -1,12 +1,15 @@
 ---
 name: session-resume
-description: Resume work in a Project Steward managed project. Use at the START of any session in a repo containing .project-steward/ (or when the user says "resume", "continue", "where were we", "pick up where we left off", "what's the status", or switches from another tool/device). Reads repo-resident state, recaps the last session, detects unfinished work from durable and Git evidence, and reconstructs missing handoffs. Never relies on Claude Code, Codex, or Grok native session history. On Grok, invoke as /session-resume or /project-steward:resume — bare /resume is Grok's session picker.
+description: Use at session start in a repository containing .project-steward/, or when resuming that project, checking its status, or continuing from another agent or device.
 ---
 
 # Session resume
 
 Continuity comes from files in git, not from any tool's native history.
 The user may arrive from Codex, Grok, from another device, or after a crash.
+
+On Grok, invoke `/session-resume` or `/project-steward:resume`;
+bare `/resume` is Grok's session picker.
 
 Read `.project-steward/WORKFLOW.md` when present; older projects keep the
 protocol inline in AGENTS.md.

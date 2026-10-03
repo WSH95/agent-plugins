@@ -1,6 +1,6 @@
 ---
 name: progress-tracking
-description: Keep Project Steward state current DURING work in any repo with .project-steward/. Use continuously in managed projects - when a task is completed or started, a plan changes, a decision is made, a validation run finishes, discovered work appears, or roughly every 30-45 minutes of focused work. Covers PLAN/PROGRESS/DECISIONS/QUESTIONS/RISKS updates, git commit nudges at semantic checkpoints, task-backend delegation, and the strict guardrails for editing AGENTS.md or CLAUDE.md.
+description: Use during work in repositories containing .project-steward/ when tasks, plans, decisions, questions, risks, or validation results change, or sustained work needs a checkpoint.
 ---
 
 # Progress tracking

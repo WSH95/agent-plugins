@@ -1,12 +1,16 @@
 ---
 name: project-init
-description: Initialize any repository or empty directory as an agent-managed Project Steward project. Use when the user says "init", "initialize this project", "set up project management", "make this agent-managed", "create AGENTS.md/CLAUDE.md", "set up steward", or when starting substantial work in a repo that has no .project-steward/ directory. Surveys the repo, interviews the user about unclear or high-impact assumptions, then generates AGENTS.md (canonical), a CLAUDE.md adapter, and .project-steward/ state — with approval gates.
+description: Use when setting up or re-initializing Project Steward, durable project memory, or shared AGENTS.md/CLAUDE.md instructions; also at the start of substantial work in a repository without .project-steward/.
 ---
 
 # Project init
 
 Goal: a repository that any agent (Claude Code, Codex, Grok, other) can pick up
 cold. Interview first, generate second, approve before writing.
+
+Apply this workflow to stewardship setup. Generic package initialization
+such as `npm init`, and questions about language constructors such as
+`__init__`, do not request Project Steward initialization.
 
 ## Phase 0 — Detect state
 
@@ -90,8 +94,13 @@ Never guess an unanswered load-bearing question — record it in
    blocked, next, and recently completed work with task IDs. Backend tasks
    remain authoritative. Identify unknowns instead of claiming no work exists.
    Initialization is incomplete until these document bodies are useful.
-5. `CLAUDE.md` must stay a thin adapter that imports `@AGENTS.md`
-   (Claude Code does not read AGENTS.md natively).
+5. Keep `CLAUDE.md` a thin `@AGENTS.md` compatibility adapter by default.
+   Claude Code 2.1.277+ can load AGENTS.md directly when its support and
+   instruction settings allow it; project CLAUDE.md files take precedence
+   under the default setting. The import also works on older versions and
+   in sessions without native support, and does not load AGENTS.md twice.
+   Preserve existing adapters and Claude-specific user guidance. See
+   [Claude Code's instruction-loading documentation](https://code.claude.com/docs/en/memory#agentsmd).
 
 ## Phase 4 — Git
 
