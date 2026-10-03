@@ -1,0 +1,6 @@
+interface:
+  display_name: "Paperforge Ubuntu Setup"
+  short_description: "Install and verify an Ubuntu LaTeX writing environment"
+  default_prompt: "Use $paperforge-setup-ubuntu to set up and verify this Ubuntu host for LaTeX writing with a live PDF preview."
+policy:
+  allow_implicit_invocation: false
