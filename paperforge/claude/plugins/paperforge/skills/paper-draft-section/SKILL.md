@@ -11,6 +11,12 @@ reviewable and keeps the author in control.
 
 ## Pre-flight gate (run before writing a single sentence)
 
+Resolve paper paths with `python3 scripts/workspace.py show` when available.
+Use its section and bibliography files throughout this skill; `manuscript/`
+paths below describe the conventional layout. Unconfigured adopted papers need
+the confirmed mapping from `paperforge-workspace` first. Older conventional
+workspaces can keep their existing paths.
+
 1. `state/outline.md` covers this section → if not, offer to run `paper-outline`
    (drafting without an outline is how structural rewrites happen).
 2. `state/interview.md` covers this section's intent → if a needed intent is missing,
@@ -18,7 +24,8 @@ reviewable and keeps the author in control.
 3. Every number the outline promises for this section has a row in
    `evidence/results.md` → missing numbers become `\todo{NUMBER: ...}` plus a line
    under Open questions in `state/progress.md`. Never invent or extrapolate.
-4. Read `state/style.md` and `manuscript/macros.tex`; use the macros for notation.
+4. Read `state/style.md` and the existing notation definitions in the approved
+   paper files (`manuscript/macros.tex` by default); use those macros for notation.
 
 ## Drafting procedure
 

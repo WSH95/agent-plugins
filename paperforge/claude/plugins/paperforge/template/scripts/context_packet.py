@@ -19,6 +19,8 @@ import argparse
 import sys
 from pathlib import Path
 
+from workspace import WorkspaceError, load_workspace
+
 STATE_FILES = [
     ("Project brief", "state/project.md"),
     ("Style constraints", "state/style.md"),
@@ -42,9 +44,8 @@ def read(path: Path) -> str | None:
         return None
 
 
-def find_section(root: Path, section: str) -> Path | None:
+def find_section(candidates: list, section: str) -> Path | None:
     """Locate a section .tex file by fuzzy name match; None if ambiguous/missing."""
-    candidates = sorted(root.glob("manuscript/**/*.tex"))
     needle = section.lower().replace(" ", "_")
     hits = [p for p in candidates if needle in p.stem.lower()]
     if len(hits) == 1:
@@ -71,16 +72,21 @@ def main() -> int:
         print("Run from the repository root (state/ not found).", file=sys.stderr)
         return 1
 
+    try:
+        workspace = load_workspace(root)
+    except (WorkspaceError, OSError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+    sec = find_section(workspace.tex_files, args.section)
+    if sec is None:
+        return 1
+
     parts = [f"# Context packet — section: {args.section} — task: {args.task}\n"]
     for title, rel in STATE_FILES:
         text = read(root / rel)
         parts.append(f"## {title} ({rel})\n\n" + (text if text else "_missing_") + "\n")
 
-    sec = find_section(root, args.section)
-    if sec is not None:
-        parts.append(f"## Current section text ({sec})\n\n```latex\n{read(sec)}\n```\n")
-    else:
-        parts.append("## Current section text\n\n_not resolved — see stderr_\n")
+    parts.append(f"## Current section text ({workspace.relative(sec)})\n\n```latex\n{read(sec)}\n```\n")
 
     parts.append("## Agent instructions\n\n" + AGENT_INSTRUCTIONS)
     packet = "\n".join(parts)
@@ -88,7 +94,7 @@ def main() -> int:
     if args.output:
         out = Path(args.output)
         out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(packet)
+        out.write_text(packet, encoding="utf-8")
         print(f"Wrote {out} ({len(packet)} chars)", file=sys.stderr)
     else:
         print(packet)

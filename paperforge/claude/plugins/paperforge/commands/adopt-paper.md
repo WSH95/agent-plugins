@@ -32,7 +32,9 @@ before writing).
    initial commit the script skips:
    `chore: initialize paper workspace from paperforge template`.
 3. If the script reported \documentclass candidates, ask the author which
-   file is the main manuscript and record the answer (AGENTS.md §10).
+   file is the main manuscript, then use `paperforge-workspace`'s confirmed
+   file-list procedure to save and validate `state/workspace.json` (AGENTS.md
+   §10). Reuse an existing mapping; leave the author's paper and Makefile in place.
 4. Relay next steps: "Start the intake interview.", plus the optional
    Project Steward init (workspace AGENTS.md §12 answer key) if steward is
    installed.

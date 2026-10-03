@@ -14,7 +14,7 @@ major weakness with evidence and prioritizes. Output lands in
 
 Independent reviews are only informative if reviewers cannot anchor on each other or
 on the authors' private knowledge. Two rules are therefore mandatory:
-- Reviewers read **only `manuscript/`** — like real reviewers, they see the paper,
+- Reviewers read **only the confirmed paper files** (`manuscript/` by default) — like real reviewers, they see the paper,
   not the lab notebook (`state/`, `evidence/` are off limits to them).
 - No reviewer sees another review from the current round before finishing.
 - Reviewers never receive the author's Obsidian vault or private reading
@@ -26,7 +26,9 @@ on the authors' private knowledge. Two rules are therefore mandatory:
 ## Setup
 
 1. Preconditions: the sections under review are at least `drafted` on the board.
-   Ask which round this is; create `state/reviews/round-N/`.
+   Choose the round with the author. Paths A/B create `state/reviews/round-N/`;
+   Path C creates it itself, so leave a new round directory absent. For an
+   interrupted scripted round use `--resume` instead of recreating it.
 2. The five panel personas are the `reviewer-*` files in `.claude/agents/`:
    `reviewer-learning` (novelty &
    ablations), `reviewer-systems` (hardware & sim-to-real), `reviewer-theory`
@@ -40,13 +42,19 @@ on the authors' private knowledge. Two rules are therefore mandatory:
    reviewer invocation as `Target venue: <venue>` — real reviewers know the
    venue, and each persona carries venue-calibration rules. Reviewers still
    never see `state/` itself.
+4. When available, run `python3 scripts/workspace.py show` in the parent
+   session. Pass the resulting paper file list and main-document path to native
+   reviewers and the area chair. They read those files, not the mapping or
+   surrounding directories. Finish `paperforge-workspace` setup for an
+   unconfigured adopted layout. Older conventional workspaces use `manuscript/`.
 
 ## Path A — native project agents (Claude Code and Grok Build)
 
 Both Claude Code and Grok Build discover the `reviewer-*` files in
-`.claude/agents/` as project agents. Invoke every `reviewer-*` **in
+`.claude/agents/` as project agents. Invoke each selected `reviewer-*` **in
 parallel, in the same turn**, each with the prompt: "Review the paper in
-manuscript/ per your instructions; output the full review." On Grok Build
+the supplied paper file list per your instructions; output the full review."
+Include the main-document path and target venue. On Grok Build
 that is `spawn_subagent` with `subagent_type` set to the persona name
 (`reviewer-learning`, `reviewer-systems`, `reviewer-theory`,
 `reviewer-stats`, `reviewer-impact`) and `capability_mode: read-only`.
@@ -59,24 +67,38 @@ Codex custom reviewer agents are defined in `.codex/agents/reviewer-*.toml`
 (read-only sandbox; they defer to the canonical `.claude/agents/*.md`
 personas). Codex
 spawns subagents only when explicitly asked, so instruct it explicitly:
-"Spawn one agent per reviewer — reviewer-learning, reviewer-systems,
-reviewer-theory, reviewer-stats, reviewer-impact — wait for all of them, then
+"Spawn one agent per selected reviewer, passing the confirmed paper file list,
+main-document path, and target venue — wait for all of them, then
 save each review verbatim to state/reviews/round-N/<name>.md." Isolation here is by
 instruction and read-only sandbox, not by filesystem — pass that caveat to
 the area chair when you invoke the meta-review step.
 
-## Path C — scripted strict isolation (any CLI, strongest guarantee)
+## Path C — scripted paper snapshots (any CLI)
 
 Run `BACKEND=claude scripts/review_panel.sh N`, `BACKEND=codex ...`, or
 `BACKEND=grok ...`. Each
 persona runs as a separate non-interactive CLI call inside a temporary
-directory containing **only a copy of `manuscript/`** — reviewers physically
-cannot read `state/`, `evidence/`, or other reviews. Prefer this path for
-final pre-submission panels.
+directory containing only the approved paper files, with relative paths
+preserved under `manuscript/`. The CLI's sandbox controls access outside that
+snapshot; describe the isolation accurately in the meta-review.
+
+- Default: all reviewer personas, one call at a time. Pass
+  `--reviewers reviewer-stats,reviewer-theory` to select a subset and `--jobs 2`
+  to allow two concurrent calls. Area-chair is always a separate later step.
+- Existing rounds require `--resume`. It reuses completed reviews and runs
+  only failed/unfinished reviewers; backend, briefing, and selection are inherited
+  unless explicitly supplied again. Input or backend-version changes require a
+  new round. Legacy rounds without metadata remain readable but cannot resume.
+- `run.json` records input fingerprints, selection, statuses, attempts, and
+  elapsed times. Backend output goes to `diagnostics/` until the call succeeds
+  and the review has its required sections; only then is `<reviewer>.md` saved.
+- On failure, inspect the diagnostic files, fix the operational issue, and
+  resume unchanged inputs. Do not overwrite reviews or repeatedly retry a
+  failing provider without addressing its error.
 
 Last-resort fallback (no CLI available, single context — say so in the
 meta-review): for each persona **sequentially**, read only that persona file
-and `manuscript/`, adopt the persona fully, write the review to its file, and
+and the confirmed paper files, adopt the persona fully, write the review to its file, and
 do not re-read reviews already written this round. Run the area-chair
 protocol afterwards in this same context (see the meta-review section); its
 output must carry the `non-independent (main agent)` label on the `Panel:`
@@ -90,7 +112,7 @@ the closest prior work (e.g., very recent competitors), enable the briefing
 pack: the `paper-related-work` skill writes source-verified one-pagers to
 `state/related-work/briefs/`, and the panel provides them — Path C via
 `BRIEFING=1`, Paths A/B by adding "also read state/related-work/briefs/ (and
-nothing else outside manuscript/)" to each invocation. Briefed reviews and
+nothing else outside the confirmed paper files)" to each invocation. Briefed reviews and
 their meta-review must be labeled "briefed" so they are never mistaken for a
 blind panel; pass the label to the area chair too — only then may it read
 `state/related-work/briefs/`.
@@ -109,11 +131,19 @@ The meta-review is written by the `area-chair` persona in a fresh context —
 never by this session, which drafted the paper and cannot judge it
 independently.
 
+Before invoking it, confirm all selected reviewers have returned their full
+reviews. Run `python3 scripts/check_reviews.py N --panel-only` when available;
+for scripted rounds this checks the recorded selection and completed-output
+hashes. If it fails, resolve the panel first. Legacy rounds without `run.json`
+only have a file-presence check, so compare their files to the selected reviewers
+yourself. After resuming a partial round, generate a fresh meta-review covering
+the complete set; an earlier partial meta-review must not be reused.
+
 1. Invoke the `area-chair` subagent (Claude Code or Grok Build: the
    `area-chair` project agent from `.claude/agents/`; on Grok,
    `spawn_subagent` with `subagent_type: area-chair`. Codex: "Spawn the
    area-chair agent"), passing the round number, which path produced the
-   reviews plus its isolation caveats, and any briefed / internal-audit
+   reviews plus its isolation caveats, the confirmed paper file list, and any briefed / internal-audit
    labels. It reads the manuscript first, then the round's reviews,
    `evidence/results.md`, and `state/project.md`, and rules on every
    major weakness with an evidence-cited verdict (`confirmed |

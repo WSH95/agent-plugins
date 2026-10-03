@@ -8,6 +8,12 @@ description: Build the related-work section and the citation base. Use whenever 
 Produce three artifacts: `state/related-work-map.md` (the positioning table),
 `manuscript/sections/2_related_work.tex`, and a synchronized `manuscript/refs.bib`.
 
+These are the conventional filenames. When available, run
+`python3 scripts/workspace.py show` and use the mapped section and bibliography
+files instead. Check citation keys against every mapped bibliography. Preserve
+the author's bibliography organization; ask if the destination for new entries
+is unclear. Finish `paperforge-workspace` setup for an unconfigured adopted paper.
+
 ## The one hard rule
 
 **Never cite from memory alone.** A fabricated or mis-attributed citation is the

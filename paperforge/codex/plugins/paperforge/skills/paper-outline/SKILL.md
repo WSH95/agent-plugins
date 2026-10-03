@@ -11,6 +11,11 @@ change; drafted prose is not — so all structural argument happens here.
 
 ## Preconditions
 
+- Resolve paper paths with `python3 scripts/workspace.py show` when the helper
+  is present. Use the confirmed file locations; conventional paths below are
+  examples. For an unconfigured adopted layout, finish `paperforge-workspace`
+  setup first. Older conventional workspaces can use their existing paths.
+
 - `state/project.md` has confirmed contributions. If not, run `paper-intake` first.
 - The target venue and paper type are recorded in `state/project.md` (from
   intake). They set the section architecture (step 1); if missing, confirm them
@@ -59,7 +64,9 @@ change; drafted prose is not — so all structural argument happens here.
    ordering, experiment ordering, and what gets cut under page pressure are author
    decisions — surface them explicitly.
 6. **Scaffold.** On approval, realize the chosen architecture in
-   `manuscript/sections/`. The shipped skeleton is a **journal-superset** seed
+   the mapped section files (`manuscript/sections/` by default). Preserve an
+   adopted paper's existing content and structure except for the approved edits;
+   the seed instructions below apply to new papers. The shipped skeleton is a **journal-superset** seed
    (`4_results`, `5_discussion`, `6_conclusion` = Conclusion and Limitations). For
    a **conference short paper**, merge Results+Discussion into a single Experiments
    section and drop `5_discussion` and its `\input` in `main.tex`; for a **combined

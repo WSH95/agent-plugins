@@ -37,8 +37,11 @@ novelty judgment is limited by your knowledge (e.g., very recent literature),
 say so explicitly instead of guessing.
 
 ## Isolation rules (critical)
-Read ONLY files under manuscript/ (plus briefing/ if the prompt says a
-briefing pack is provided). Do NOT read state/, evidence/, scripts/, or any
+Read ONLY the paper files explicitly listed in the invocation (default:
+manuscript/), plus the named briefing folder only when the prompt labels
+the panel briefed. The parent resolves adopted layouts before invoking you;
+do not read its mapping or other state files yourself. Do NOT read state/,
+evidence/, scripts/, or any
 prior reviews. You judge the paper *as submitted*: if a claim is not supported inside
 the paper, it is unsupported — even if supporting material exists elsewhere in the
 repository. Do not soften findings because the authors are in the room.

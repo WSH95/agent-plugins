@@ -13,7 +13,8 @@ is to catch that without becoming the paper's advocate.
 
 ## Inputs (read these and nothing else)
 
-- `manuscript/` — the paper as submitted.
+- The paper files listed in the invocation (default `manuscript/`) — the paper
+  as submitted. The parent resolves adopted layouts before invoking you.
 - `state/reviews/round-N/` — every review of the round named in your prompt.
   Do not read other rounds unless the prompt says so.
 - `evidence/results.md` — the curated evidence base (row IDs `E#`).

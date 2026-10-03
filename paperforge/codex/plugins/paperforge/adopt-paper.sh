@@ -127,6 +127,12 @@ if [ ! -d "${DEST}/manuscript" ] \
         echo "answer in state/decisions.md, and treat its directory as the"
         echo "manuscript root everywhere the workflow says 'manuscript/'"
         echo "(including \`make check\` and the review panel)."
+        echo "Save the confirmed file list in state/workspace.json: main_tex,"
+        echo "bibliographies, and paper_paths (additional paper files/directories)."
+        echo "Paths are relative to this workspace; leave the author's files in place."
+        echo "Validate with: python3 scripts/workspace.py show"
+        echo "With a custom Makefile, use python3 scripts/workspace.py pdf and"
+        echo "python3 scripts/check_paper.py directly."
     } >> "${DEST}/state/project.md"
     echo "  note: no manuscript/ found; candidates recorded in state/project.md"
 fi

@@ -25,6 +25,8 @@ import re
 import sys
 from pathlib import Path
 
+from workspace import WorkspaceError, load_workspace
+
 # ---------------------------------------------------------------- config ---
 
 # Acronyms that need no definition in this project. Extend freely.
@@ -40,8 +42,6 @@ TERM_VARIANTS = [
     ["end-to-end", "end to end"],
     ["real-world", "real world"],  # adjective vs. noun: review hits manually
 ]
-
-SECTION_ORDER_HINT = re.compile(r"(\d+)")  # sections sort by leading number
 
 # ---------------------------------------------------------------- helpers --
 
@@ -96,16 +96,6 @@ def strip_todos(line: str, depth: int) -> tuple[str, int]:
     return "".join(out), depth
 
 
-def tex_files(root: Path):
-    files = [p for p in root.rglob("*.tex")]
-
-    def key(p: Path):
-        m = SECTION_ORDER_HINT.search(p.stem)
-        return (0, int(m.group(1))) if m and "sections" in p.parts else (1, 0)
-
-    return sorted(files, key=key)
-
-
 def load_bib_keys(bib: Path):
     if not bib.exists():
         return set()
@@ -128,9 +118,10 @@ def load_evidence_ids(results: Path):
 
 
 def main() -> int:
-    manuscript = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("manuscript")
-    if not manuscript.exists():
-        print(f"ERROR: manuscript directory not found: {manuscript}")
+    try:
+        workspace = load_workspace(manuscript_dir=sys.argv[1] if len(sys.argv) > 1 else None)
+    except (WorkspaceError, OSError) as exc:
+        print(f"ERROR: {exc}")
         return 1
 
     errors, warnings, infos = [], [], []
@@ -152,8 +143,8 @@ def main() -> int:
     ev_tag_re = re.compile(r"%\s*evidence:\s*([E0-9,\s]+)", re.IGNORECASE)
 
     seen_position = 0
-    for path in tex_files(manuscript):
-        rel = path.relative_to(manuscript.parent) if manuscript.parent != Path(".") else path
+    for path in workspace.tex_files:
+        rel = workspace.relative(path)
         todo_depth = 0
         para: list = []  # (lineno, prose) — one LaTeX paragraph, joined for digit scan
 
@@ -230,9 +221,9 @@ def main() -> int:
                     para.append((lineno, prose.strip()))
         flush_para()
 
-    bib_keys = load_bib_keys(manuscript / "refs.bib")
+    bib_keys = set().union(*(load_bib_keys(bib) for bib in workspace.bibliographies))
 
-    ev_path = manuscript.parent / "evidence" / "results.md"
+    ev_path = workspace.root / "evidence" / "results.md"
     ev_ids, ev_dupes = load_evidence_ids(ev_path)
     for k in sorted(ev_dupes):
         errors.append(f"duplicate evidence ID in {ev_path}: '{k}'")

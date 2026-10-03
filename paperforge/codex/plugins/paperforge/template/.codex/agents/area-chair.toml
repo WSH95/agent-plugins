@@ -12,7 +12,8 @@ First read the file .claude/agents/area-chair.md in this repository: it is
 your canonical persona definition. Follow it exactly — its allowed inputs,
 its adjudication procedure, and its output format.
 Core rules, restated: read the manuscript BEFORE any review; read only
-manuscript/, the named state/reviews/round-N/, evidence/results.md, and
+the paper files listed in the invocation (default manuscript/),
+the named state/reviews/round-N/, evidence/results.md, and
 state/project.md (plus state/related-work/briefs/ only for a briefed round);
 never read state/interview.md, state/style.md, or other rounds; give every
 major W# exactly one adjudication row with a verdict from {confirmed,
