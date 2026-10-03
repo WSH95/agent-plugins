@@ -16,6 +16,9 @@ manuscript/main.pdf
 __pycache__/
 *.pyc
 
+# Panel process locks (OS releases ownership on exit/crash)
+state/reviews/.round-*.lock
+
 # OS noise
 .DS_Store
 Thumbs.db

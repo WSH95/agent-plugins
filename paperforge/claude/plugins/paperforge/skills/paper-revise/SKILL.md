@@ -10,13 +10,19 @@ agent-ownable items, and (3) a response letter when reviews are real.
 
 ## 1. Ingest
 
+Resolve the paper files with `python3 scripts/workspace.py show` when available;
+perform edits in those existing files. Use the conventional paths for older
+workspaces, or finish `paperforge-workspace` setup for an unconfigured adoption.
+
 Read every review in `state/reviews/round-N/` plus `meta-review.md`. For real venue
 reviews: save them verbatim into the same round structure first (one file per
 reviewer) so the pipeline is identical, then offer to run the area-chair
 adjudication over them (the `area-chair` persona from `paper-review-panel` —
 same pipeline), which yields evidence-checked verdicts and ready rebuttal
 material. Once `meta-review.md` exists, run `python3 scripts/check_reviews.py N`
-(mock rounds: re-run it here as a cheap gate). If the author declines the
+(mock rounds: re-run it here as a cheap gate). A scripted round's `run.json`
+also gates completion and verifies the saved reviews: resume unfinished reviewers
+before revising. If the author declines the
 adjudication, skip the checker and plan from the raw reviews.
 
 ## 2. Plan — `state/reviews/round-N/revision-plan.md`

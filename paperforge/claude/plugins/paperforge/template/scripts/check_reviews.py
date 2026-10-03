@@ -32,7 +32,11 @@ smoke test reference these exact tags) — do not unify.
 
 Exit codes: 0 clean, 1 at least one FAIL, 2 usage error. Run from the
 workspace root:
-    python3 scripts/check_reviews.py <round-number>
+    python3 scripts/check_reviews.py <round-number> [--panel-only]
+--panel-only checks completion before invoking the area chair; the normal
+mode also checks meta-review coverage. Scripted rounds with run.json require
+every selected reviewer to be complete with unchanged output hashes. Legacy
+rounds remain readable without metadata.
 Python 3.8+; files are read as UTF-8 with errors ignored so Windows locale
 defaults cannot mis-decode the em-dash headings.
 """
@@ -42,6 +46,8 @@ from __future__ import annotations
 import re
 import sys
 from pathlib import Path
+
+from review_panel import RoundError, completed_reviews
 
 # ---------------------------------------------------------------- config ---
 
@@ -129,10 +135,12 @@ def adjudication_rows(text: str) -> list:
 
 
 def main() -> int:
-    if len(sys.argv) != 2 or not sys.argv[1].isdigit():
-        print("usage: python3 scripts/check_reviews.py <round-number>", file=sys.stderr)
+    args = [a for a in sys.argv[1:] if a != "--panel-only"]
+    panel_only = "--panel-only" in sys.argv[1:]
+    if len(args) != 1 or not args[0].isdigit():
+        print("usage: python3 scripts/check_reviews.py <round-number> [--panel-only]", file=sys.stderr)
         return 2
-    round_no = sys.argv[1]
+    round_no = args[0]
     round_dir = Path("state") / "reviews" / f"round-{round_no}"
 
     fails, warns = [], []
@@ -144,8 +152,24 @@ def main() -> int:
     reviews = sorted(
         p for p in round_dir.glob("*.md") if p.name not in NON_REVIEW_FILES
     )
+    if (round_dir / "run.json").exists():
+        try:
+            expected = completed_reviews(round_dir)
+            if set(reviews) != set(expected):
+                raise RoundError("Round review files differ from the recorded reviewer selection")
+            reviews = expected
+        except (RoundError, OSError, UnicodeError) as exc:
+            print(f"[FAIL] {exc}")
+            return 1
     if not reviews:
         fails.append(f"no review files in {round_dir}")
+
+    if panel_only:
+        for failure in fails:
+            print(f"[FAIL] {failure}")
+        if not fails:
+            print(f"[OK] {len(reviews)} review(s) ready for area-chair adjudication")
+        return 1 if fails else 0
 
     review_majors = {p.stem: major_ids(read_text(p)) for p in reviews}
     review_texts = {p.stem: read_text(p) for p in reviews}

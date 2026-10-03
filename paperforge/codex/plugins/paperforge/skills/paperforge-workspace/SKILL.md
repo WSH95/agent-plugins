@@ -66,8 +66,16 @@ Use `--force` only after warning that Paperforge scaffolding files are
 overwritten with timestamped backups. The script never moves or overwrites the
 author's manuscript directory.
 
-If the script reports documentclass candidates, ask the author which `.tex` file
-is the main manuscript and record that answer in the paper workspace.
+After adoption, resolve the paper layout. For an existing confirmed
+`state/workspace.json`, run `python3 scripts/workspace.py show` and reuse it.
+Without one, the conventional `manuscript/main.tex` layout works by default.
+For any other layout, inspect the paper's main document, bibliography, sections,
+figures, and local style files; propose their file list and get the author's
+confirmation once. Follow [the layout contract](references/workspace-layout.md)
+to save the mapping, validate it, and record the decision. Keep files in place.
+Explain that scaffolding is installed but downstream tools need this confirmation
+before they can use a nonstandard layout. Do not treat a candidate note as setup
+completion or infer all LaTeX dependencies automatically.
 
 ## Refresh Existing Scaffolding
 

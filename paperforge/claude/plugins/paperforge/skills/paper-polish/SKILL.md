@@ -11,6 +11,11 @@ for `paper-draft-section` instead.
 
 ## Scope first
 
+Resolve the actual paper files with `python3 scripts/workspace.py show` when
+available. Use that inventory for adopted layouts, leaving their files in place;
+an unconfigured adopted paper goes through `paperforge-workspace` first. Older
+conventional workspaces can use their existing paths.
+
 Confirm scope before editing: which files/sections, and which passes (below). "Polish
 the paper" defaults to all drafted sections, passes 1–6. Record a word/line count
 before and after.
@@ -47,7 +52,9 @@ before and after.
    assumptions, caveats, or reproducibility details to save space without asking.
 5. **Mechanical.** Run `python3 scripts/check_paper.py` from the repo root and fix
    every ERROR and each WARN (or justify leaving it). Re-run until clean. Then
-   compile (`make pdf`) if LaTeX is available and fix build issues.
+   compile if LaTeX is available and fix build issues: `make pdf` for the shipped
+   Makefile, or `python3 scripts/workspace.py pdf` for mapped papers with a custom
+   Makefile (preserve the author's own build rules).
 6. **Style-sheet sweep.** Enforce `state/style.md` item by item: terminology table,
    banned phrases, tense/person rules, number formatting. When a rule is missing
    for a case you hit, ask once, then add the ruling to `state/style.md`.
