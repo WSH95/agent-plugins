@@ -4,7 +4,7 @@ Durable, repo-resident project memory for Claude Code, Codex, and other
 coding agents. Python 3.7+ compatible, standard library only.
 """
 
-__version__ = "0.5.0"
+__version__ = "0.5.1"
 PRODUCT_NAME = "Project Steward"
 STATE_DIR_NAME = ".project-steward"
 BLOCK_PREFIX = "PROJECT-STEWARD"

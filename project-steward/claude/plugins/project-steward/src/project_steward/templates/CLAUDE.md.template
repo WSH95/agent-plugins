@@ -1,5 +1,7 @@
 @AGENTS.md
 
-<!-- Claude Code does not read AGENTS.md on its own. This import provides
-the shared project instructions. Keep only Claude-specific instructions
-below this comment. -->
+<!-- Compatibility adapter for shared project instructions. Claude Code
+2.1.277+ can load AGENTS.md directly, depending on settings and project
+instruction files. Keeping this import also supports older versions and
+sessions without native loading; it does not load AGENTS.md twice.
+Keep only Claude-specific instructions below this comment. -->
