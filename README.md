@@ -44,20 +44,6 @@ Use Project Steward when working with an LLM coding agent on a project
 that needs durable project memory, progress tracking, and clean handoff
 across sessions or tools.
 
-Project Steward 0.5.1 keeps shared instructions in `AGENTS.md` and generates
-a thin `CLAUDE.md` adapter with `@AGENTS.md`. Claude Code 2.1.277+ can load
-`AGENTS.md` directly when native support and Project instructions settings
-allow it. Under the default setting, `CLAUDE.md`, `.claude/CLAUDE.md`, or
-`CLAUDE.local.md` in the working directory or an ancestor takes precedence.
-The adapter supports older versions and sessions without native loading;
-Claude deduplicates the imported content. See
-[Claude Code's instruction-loading documentation](https://code.claude.com/docs/en/memory#agentsmd).
-
-The six skills cover project setup, session resume, progress tracking,
-handoff, task-backend choice, and build/distribution maintenance for skill
-and plugin repositories. Managed projects retain automatic session-start,
-progress, and handoff triggers.
-
 For Grok Build, install Project Steward from this marketplace (the
 Claude plugin path) and pass `--trust` so hooks run. Use
 `/session-resume` or `/project-steward:resume` for the repo-resident
