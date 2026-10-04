@@ -29,12 +29,17 @@ grok plugin install paperforge --trust
 appear from a Claude Code install via Grok's Claude compatibility, but
 those hooks stay inert until Grok trusts the plugin.
 
+cross-agent is the exception: Grok attaches it per project, as its
+[use case](#cross-agent-use-case) says.
+
 ## Plugins
 
 - [Project Steward](#project-steward-use-case) — cross-agent project
   stewardship plugin for Claude Code, Codex, Grok Build, and other
   coding agents.
 - [Paperforge](#paperforge-use-case) - academic paper writing, mock review, revision, and paper workspace scaffolding.
+- [cross-agent](#cross-agent-use-case) — run headless `claude`, `codex`, and
+  `grok` processes as one team from Claude Code, Codex, or Grok.
 
 ### Use Case
 
@@ -114,6 +119,52 @@ Example interactions:
 - Start the intake interview for a new paper.
 - Run a mock review panel before submission.
 
+#### Cross-Agent Use Case
+
+Use cross-agent when you want your Claude Code, Codex, or Grok session to
+hand work to the other engines: a one-off review or question to another
+model, or a whole team — planner, plan reviewer, implementer, parallel code
+reviewers on different engines, and a resolver — that works each task in its
+own git worktree and merges only tested, reviewed work. It needs Linux, git,
+Node.js 24 or later, and the engine CLIs your roles use, signed in. Source
+and full documentation:
+[WSH95/cross-agent-cli](https://github.com/WSH95/cross-agent-cli).
+
+For Claude Code, install `cross-agent` at user scope or with
+`--scope local`, not `--scope project`, which every Claude specialist would
+load. The plugin puts its operator CLI, `cross-agent`, on the session's Bash
+tool path: ask Claude to run `cross-agent init --mode dev-team` in a project
+to set up a team. A git repository with no config runs the one-consultant
+`solo` mode with no setup.
+
+For Codex, install it with `codex plugin add cross-agent@agent-plugins`.
+Codex starts the plugin's server in its cache, so the server serves only the
+project you name, and only once that project has a config, even for `solo`:
+
+```bash
+cd /path/to/your-project
+~/.codex/plugins/cache/agent-plugins/cross-agent/<version>/bin/cross-agent init --mode solo
+CROSS_AGENT_PROJECT="$PWD" codex
+```
+
+For Grok Build, attach cross-agent per project from a clone of the source
+repository rather than with `grok plugin install`, which would load it in
+every Grok session:
+[Install it in Grok](https://github.com/WSH95/cross-agent-cli/blob/main/docs/install.md#install-it-in-grok).
+Grok also loads the plugins Claude Code installs, so with both on one
+machine, see that guide's Claude Code section for the switch.
+
+Example interactions:
+
+- Ask agent to have Codex review a file through cross-agent and report
+  what it finds.
+- Ask agent to use the cross-agent dev team to implement a change, with the
+  plan reviewed first and the branch reviewed by Claude, Codex, and Grok in
+  parallel.
+- Ask agent what the team is doing, or answer a lead's question from a
+  terminal with `cross-agent answer`.
+
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE). cross-agent carries its own MIT
+license in its payload, `cross-agent/*/plugins/cross-agent/LICENSE`.
