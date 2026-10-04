@@ -1,0 +1,18 @@
+#!/bin/sh
+# Codex starts this plugin's MCP server through this file, in the plugin's own directory
+# (`.codex-plugin/plugin.json`, `cwd: "."`): codex-cli 0.159.3 substituted no `${PLUGIN_ROOT}`
+# in an inline `command`, `args` or `cwd`, and runs a relative command from the server's
+# working directory. That directory is Codex's cache copy of this repository, where discovery
+# finds no project the operator meant: a copy of an export holds no `.git` and no config, so
+# discovery finds nothing, and a copy of a checkout carries the checkout's `.git`, so
+# discovery finds a repository the operator did not name — the copy itself, for a main
+# checkout or a worktree initialized as a project of its own, or the main checkout its
+# pointer leads to, for any other linked worktree. So the server serves the project the
+# operator names in CROSS_AGENT_PROJECT, and without one it does not start.
+if [ -z "${CROSS_AGENT_PROJECT:-}" ]; then
+  echo "cross-agent: bundled mount not started; ask the cross-agent skill to set up its Codex MCP connection once, or export CROSS_AGENT_PROJECT=<configured project root> before starting codex" >&2
+  exit 1
+fi
+# A root that cannot be resolved stops here, rather than handing node `/src/server.ts`.
+root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd) || exit 1
+exec node "$root/src/server.ts" "$@"

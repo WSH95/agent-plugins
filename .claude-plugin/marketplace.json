@@ -16,6 +16,11 @@
       "name": "paperforge",
       "source": "./paperforge/claude/plugins/paperforge",
       "description": "Agent-native academic paper-writing kit and per-paper workspace template."
+    },
+    {
+      "name": "cross-agent",
+      "source": "./cross-agent/claude/plugins/cross-agent",
+      "description": "Run headless claude, codex, and grok processes as one team (planner, plan reviewer, implementer, code reviewer seats, resolver) from Claude Code, Codex, or Grok."
     }
   ]
 }
