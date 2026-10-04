@@ -138,14 +138,16 @@ to set up a team. A git repository with no config runs the one-consultant
 `solo` mode with no setup.
 
 For Codex, install it with `codex plugin add cross-agent@agent-plugins`.
-Codex starts the plugin's server in its cache, so the server serves only the
-project you name, and only once that project has a config, even for `solo`:
+Then ask Codex: **“Use cross-agent to set up its MCP connection once for this host.”**
+Restart MCP or open a new session afterwards. The skill configures MCP for the CLI
+and local Linux desktop Codex; each chat discovers its own project without a
+per-session `CROSS_AGENT_PROJECT` or a versioned cache path. A git repository with
+no config runs `solo`. For a team, ask the skill to initialize the project with
+`dev-team` or `dev-team-engine`.
 
-```bash
-cd /path/to/your-project
-~/.codex/plugins/cache/agent-plugins/cross-agent/<version>/bin/cross-agent init --mode solo
-CROSS_AGENT_PROJECT="$PWD" codex
-```
+Install and update through the marketplace as usual. The connection follows the
+installed version on reconnect. The skill also checks or removes the setup:
+[Install it in Codex](https://github.com/WSH95/cross-agent-cli/blob/main/docs/install.md#install-it-in-codex).
 
 For Grok Build, attach cross-agent per project from a clone of the source
 repository rather than with `grok plugin install`, which would load it in
