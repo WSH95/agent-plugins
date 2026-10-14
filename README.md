@@ -130,20 +130,25 @@ Node.js 24 or later, and the engine CLIs your roles use, signed in. Source
 and full documentation:
 [WSH95/cross-agent-cli](https://github.com/WSH95/cross-agent-cli).
 
+Set a project up from your session, with no terminal step: ask it to **set up
+cross-agent**. The setup skill shows which engines are installed, proposes a
+team built from them, writes `.cross-agent/config.json` and two `.gitignore`
+lines only once you confirm, offers to commit that change, and tells you when
+to reconnect. Ask for setup again to change the team, a role's engine or model,
+or the test command. A git repository with no config runs the one-consultant
+`solo` mode with no setup.
+
 For Claude Code, install `cross-agent` at user scope or with
 `--scope local`, not `--scope project`, which every Claude specialist would
-load. The plugin puts its operator CLI, `cross-agent`, on the session's Bash
-tool path: ask Claude to run `cross-agent init --mode dev-team` in a project
-to set up a team. A git repository with no config runs the one-consultant
-`solo` mode with no setup.
+load. Then run `/cross-agent:setup` in a project. The plugin also puts its
+operator CLI, `cross-agent`, on the session's Bash tool path.
 
 For Codex, install it with `codex plugin add cross-agent@agent-plugins`.
 Then ask Codex: **“Use cross-agent to set up its MCP connection once for this host.”**
 Restart MCP or open a new session afterwards. The skill configures MCP for the CLI
 and local Linux desktop Codex; each chat discovers its own project without a
-per-session `CROSS_AGENT_PROJECT` or a versioned cache path. A git repository with
-no config runs `solo`. For a team, ask the skill to initialize the project with
-`dev-team` or `dev-team-engine`.
+per-session `CROSS_AGENT_PROJECT` or a versioned cache path. Then, in a
+project, type `$` and pick the setup skill, or ask Codex to set up cross-agent.
 
 Install and update through the marketplace as usual. The connection follows the
 installed version on reconnect. The skill also checks or removes the setup:
@@ -153,11 +158,14 @@ For Grok Build, attach cross-agent per project from a clone of the source
 repository rather than with `grok plugin install`, which would load it in
 every Grok session:
 [Install it in Grok](https://github.com/WSH95/cross-agent-cli/blob/main/docs/install.md#install-it-in-grok).
+Then run `/setup` in the trusted project, or ask Grok to set up cross-agent.
 Grok also loads the plugins Claude Code installs, so with both on one
 machine, see that guide's Claude Code section for the switch.
 
 Example interactions:
 
+- Ask agent to set up cross-agent for this project, or to change the team, for
+  example to use Claude for the plan reviewer.
 - Ask agent to have Codex review a file through cross-agent and report
   what it finds.
 - Ask agent to use the cross-agent dev team to implement a change, with the
