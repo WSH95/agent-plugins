@@ -22,9 +22,9 @@ import { answerAsk, ask, askStatuses, lineageAsks, listAsks } from "./mailbox.ts
 import type { AskStatus } from "./mailbox.ts";
 import { builtInModesDir, describeMode, gitPolicy } from "./modes.ts";
 import type { Mode } from "./modes.ts";
-import { discoverProject, isMainModule } from "./project.ts";
+import { discoverProject, holdsConfig, isMainModule } from "./project.ts";
 import { reconcileAndCleanup } from "./reconcile.ts";
-import { cancel, check, lineageIds, listTasks, ownedBy, result } from "./tasks.ts";
+import { cancel, check, defaultSettledLimit, lineageIds, listTasks, ownedBy, result } from "./tasks.ts";
 import { scan, taskStatuses } from "./ledger.ts";
 import type { TaskStatus } from "./ledger.ts";
 import { wait } from "./wait.ts";
@@ -288,6 +288,35 @@ export interface ToolOptions {
    * only with one, and a block added or removed since is a restart (`recordsDriftFault`).
    */
   records?: RecordsConfig;
+  /**
+   * The directory this server was started in: `describe_mode` warns where it lies in an
+   * initialized project other than the one served. Absent, as for a server built
+   * in-process, nothing is checked. Codex's bundled plugin mount starts this server in its
+   * cache copy of the plugin (`.codex-plugin/plugin.json`, `cwd: "."`), not the host's
+   * directory, so there the warning never speaks for the host's project, and the launcher's
+   * stop rule, judged against the host's own working directory, is what still applies.
+   */
+  cwd?: string;
+}
+
+/**
+ * Where the directory this server was started in lies in an initialized project other than
+ * `projectRoot`, the sentence that says so, naming all three; null otherwise. The lookup is
+ * discovery's own walk with no flag and no environment, so it finds what the host's working
+ * directory would serve on its own. It reads no `realpath` of `projectRoot`: a root the walk
+ * finds by its config is already real, and the roots it returns that are not hold no config,
+ * which this rules out. A lookup that finds nothing, or fails anywhere, the config's own
+ * read included, is no warning (atc-s96.102).
+ */
+async function cwdProjectWarning(projectRoot: string, cwd: string): Promise<string | null> {
+  try {
+    const found = await discoverProject([], {}, cwd);
+    if ("reason" in found || found.root === projectRoot || !holdsConfig(found.root)) return null;
+    return `this server serves ${projectRoot}, but the directory it was started in, ${cwd}, lies in the initialized project ${found.root}: `
+      + `a --project, a CROSS_AGENT_PROJECT or an attach naming ${projectRoot} may be left from another session`;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -690,7 +719,7 @@ export function projectTools(projectRoot: string, options: ToolOptions): ToolDef
       description: "The active mode's loop text, its roles with their workspace, sandbox default and prompt, its git policy, and projectRoot, the root of the project this server serves. Call this first: it is how a launcher learns the loop, which is served rather than copied. review carries the loop's two settings, limits.planReviewRounds and review.afterResolver.",
       inputSchema: { type: "object", properties: {} },
       rows: ["operator", "lead", "specialist"],
-      handler: () => {
+      handler: async () => {
         const config = loadConfig(projectRoot);
         const described = describeMode(modesDir, config.mode);
         // The project beside the mode's own text: what a launcher shows with the roster and
@@ -701,10 +730,13 @@ export function projectTools(projectRoot: string, options: ToolOptions): ToolDef
         // The project's records where its config keeps them, and a restart named where the
         // block has come or gone since `record` was registered or left out.
         const warning = recordsDrift(options.records !== undefined, config);
+        // A key of its own: a host reads `warning` as a restart to ask for, and this is none.
+        const projectWarning = options.cwd === undefined ? null : await cwdProjectWarning(projectRoot, options.cwd);
         return text({
           ...described, projectRoot, review,
           ...(config.records === undefined ? {} : { records: describeRecords(config.records) }),
           ...(warning === null ? {} : { warning }),
+          ...(projectWarning === null ? {} : { projectWarning }),
         });
       },
     },
@@ -755,7 +787,7 @@ export function projectTools(projectRoot: string, options: ToolOptions): ToolDef
     },
     {
       name: "delegate",
-      description: "Launch a specialist for a role on a brief in a working directory, returning its task id. Validates the role, the workspace, its reservation, duplicates and the resume binding first. A role with no binding takes its engine in the call; worktree: true gives a role that works at the project root a writable task worktree of its own instead. A role bound to a list of bindings is delegated by seat, 1-based.",
+      description: "Launch a specialist for a role on a brief in a working directory, returning its task id with the engine, model and effort the task runs on, null where none was named. Validates the role, the workspace, its reservation, duplicates and the resume binding first. A role with no binding takes its engine in the call; worktree: true gives a role that works at the project root a writable task worktree of its own instead. A role bound to a list of bindings is delegated by seat, 1-based.",
       inputSchema: {
         type: "object",
         properties: {
@@ -770,12 +802,14 @@ export function projectTools(projectRoot: string, options: ToolOptions): ToolDef
       handler: async (args, context) => {
         const request = delegateRequest(fields(args, "delegate"));
         const launched = await delegate(projectRoot, request, { authority: context.authority, mode });
-        return answer(launched.ok ? { ok: true, task_id: launched.taskId } : launched);
+        return answer(launched.ok
+          ? { ok: true, task_id: launched.taskId, engine: launched.engine, model: launched.model, effort: launched.effort }
+          : launched);
       },
     },
     {
       name: "wait",
-      description: "Wait for a task to settle, for its engine to go quiet for the configured stall threshold, or for the timeout, and answer with the call to make next. A lead may wait only on a task it delegated.",
+      description: "Wait for a task to settle, for its engine to go quiet for the configured stall threshold, or for the timeout, and answer with the call to make next and the engine, model and effort the task runs on. A lead may wait only on a task it delegated.",
       inputSchema: {
         type: "object",
         properties: { task_id: { type: "string" }, timeout_seconds: { type: "number" } },
@@ -820,7 +854,7 @@ export function projectTools(projectRoot: string, options: ToolOptions): ToolDef
     },
     {
       name: "result",
-      description: "The final message of a settled task in full, with the engine session it ran under. A task still running answers with its status.",
+      description: "The final message of a settled task in full, with the engine session it ran under. A task still running answers with its status. Either way the answer carries the engine, model and effort the task runs on.",
       inputSchema: { type: "object", properties: { task_id: { type: "string" } }, required: ["task_id"] },
       rows: ["operator", "lead", "specialist"],
       handler: (args) => answer(result(projectRoot, requiredString(fields(args, "result"), "task_id", "result"))),
@@ -839,15 +873,22 @@ export function projectTools(projectRoot: string, options: ToolOptions): ToolDef
     },
     {
       name: "list_tasks",
-      description: "Every task of this project after a reconciliation pass, newest first, with the records no reader could judge.",
-      inputSchema: { type: "object", properties: { status: { type: "string", enum: [...taskStatuses] } } },
+      description: `Every active task of this project and the ${defaultSettledLimit} most recent settled ones, after a reconciliation pass, newest first, with the records no reader could judge; \`limit\` sets how many settled tasks are listed, and \`omitted\` counts those left out.`,
+      inputSchema: { type: "object", properties: { status: { type: "string", enum: [...taskStatuses] }, limit: { type: "number" } } },
       rows: ["operator", "lead", "specialist"],
       handler: async (args, context) => {
-        const status = optional(fields(args, "list_tasks"), "status", "string", "list_tasks") as string | undefined;
+        const values = fields(args, "list_tasks");
+        const status = optional(values, "status", "string", "list_tasks") as string | undefined;
         if (status !== undefined && !taskStatuses.includes(status as TaskStatus)) {
           throw new RpcError(-32602, `list_tasks status must be one of ${taskStatuses.join(", ")}`);
         }
-        const listed = await listTasks(projectRoot, status as TaskStatus | undefined);
+        const limit = optional(values, "limit", "number", "list_tasks") as number | undefined;
+        if (limit !== undefined && (!Number.isSafeInteger(limit) || limit < 0)) {
+          throw new RpcError(-32602, `list_tasks' limit must be a whole number, not negative, not ${limit}`);
+        }
+        // The settled history is bounded unless the caller asks for more, so the ordinary
+        // answer stays one a host reads whole; the active tasks are always all there.
+        const listed = await listTasks(projectRoot, status as TaskStatus | undefined, { limit: limit ?? defaultSettledLimit });
         const leadTaskId = context.authority.row === "lead" ? context.authority.taskId : undefined;
         if (leadTaskId === undefined) return answer(listed);
         // A lead reads the roster to settle leftovers before it starts, and must never take
@@ -910,11 +951,20 @@ async function main(): Promise<void> {
     return resolved;
   };
   createServer({
-    tools: projectTools(root, { mode, ...(config.records === undefined ? {} : { records: config.records }) }), authority,
+    tools: projectTools(root, { mode, ...(config.records === undefined ? {} : { records: config.records }), cwd: process.cwd() }), authority,
   }).connect(process.stdin, process.stdout);
 }
 
 if (isMainModule(import.meta.url)) {
+  // A host that leaves in the middle of a reply fails the next write with EPIPE. The server
+  // then ends as it does when its host closes stdin, with the same exit code and no stack,
+  // and does nothing else: detached runners keep running for the next server's
+  // reconciliation to settle, and a pending `wait` or `ask` ends with the process. Any other
+  // error on stdout still throws.
+  process.stdout.on("error", (error: NodeJS.ErrnoException) => {
+    if (error.code !== "EPIPE") throw error;
+    process.exit();
+  });
   main().catch((error) => {
     process.stderr.write(`cross-agent: ${error instanceof Error ? error.message : String(error)}\n`);
     process.exitCode = 1;

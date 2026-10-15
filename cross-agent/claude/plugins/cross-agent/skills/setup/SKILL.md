@@ -30,7 +30,7 @@ directly from the project root.
 |---|---|---|---|
 | Start | `/cross-agent:setup` | `$`, then the setup skill | `/setup`, or `/cross-agent:setup` |
 | Ask | `AskUserQuestion` | numbered choices in chat (its question tool is off by default), answered with a number or in words | `ask_user_question` |
-| Reconnect | `/mcp`, choose cross-agent, Reconnect | restart MCP servers, or open a new chat | open a new session |
+| Reconnect | `/mcp`, choose cross-agent, Reconnect (`/reload-plugins` does not restart the server) | restart MCP servers, or open a new chat | open a new session |
 | Approval to run one command outside the sandbox | rerun it with the Bash tool's sandbox off, which asks the user | ask for escalated permissions for that command: its sandbox keeps `.git` read-only | use the approval Grok offers |
 
 On any host the user can also ask for setup in words.
@@ -238,10 +238,9 @@ A refusal is an exit 3 with a `code`. Say each in plain words, with its next ste
   https://x.ai/cli.
 - **Every proposal unavailable, or the one a change needs, while engines were found:** show
   each `reason`, and the branch rule when a reason names the branch.
-- **The branch rule:** a default branch whose name starts with a letter or digit, uses
-  only letters, digits, `.`, `_`, `/` and `-`, has no `..` and no trailing `.`, does
-  not end in `/` or `.lock`, and does not match `task/*`. A branch worktree's default
-  branch is its own checked-out branch.
+- **The branch rule:** a default branch is a name git check-ref-format --branch accepts
+  that does not start with `-`, is not `HEAD` or `@`, holds no `@{`, and does not match
+  `task/*`. A branch worktree's default branch is its own checked-out branch.
 
 ## Connection check
 

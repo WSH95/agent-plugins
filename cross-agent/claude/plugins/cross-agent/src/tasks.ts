@@ -2,7 +2,7 @@ import fs from "node:fs";
 import { setTimeout as delay } from "node:timers/promises";
 import { loadConfig, lockWaitSeconds } from "./config.ts";
 import type { CrossAgentConfig } from "./config.ts";
-import { currentBootId, find, isProcessAlive, isTerminal, projectLock, read, scan, tailLines, update } from "./ledger.ts";
+import { activeStatuses, claimableStatuses, currentBootId, find, isProcessAlive, isTerminal, projectLock, read, scan, tailLines, update } from "./ledger.ts";
 import type { TaskPatch, TaskRecord, TaskStatus } from "./ledger.ts";
 import { spawnLockName } from "./locks.ts";
 import type { Lock } from "./locks.ts";
@@ -54,10 +54,6 @@ function generations(records: readonly TaskRecord[], leadId: string, taskId: str
 export function ownedBy(records: readonly TaskRecord[], leadId: string, taskId: string): boolean {
   return generations(records, leadId, taskId) !== null;
 }
-
-const activeStatuses = new Set<TaskStatus>(["launching", "running", "stalled", "orphaned", "cancelling"]);
-/** The statuses a cancel may claim; `orphaned` may only go to `failed | cancelled`. */
-const claimable = new Set<TaskStatus>(["launching", "running", "stalled"]);
 
 /** The tasks `taskId` owns, leaves first, so no task is settled while a child of it runs. */
 function descendants(records: readonly TaskRecord[], taskId: string): TaskRecord[] {
@@ -141,23 +137,30 @@ export async function check(projectRoot: string, taskId: string, options: { line
   };
 }
 
+/** What a task ran on, as its record holds it, `null` where none was named: what a report names it by. */
+interface Binding { engine: string; model: string | null; effort: string | null }
+
 export type ResultResult =
-  | { ok: true; id: string; status: TaskStatus; sessionId: string | null; result: string | null }
-  | { ok: true; id: string; status: TaskStatus; settled: false }
+  | ({ ok: true; id: string; status: TaskStatus; sessionId: string | null; result: string | null } & Binding)
+  | ({ ok: true; id: string; status: TaskStatus; settled: false } & Binding)
   | { ok: false; reason: string };
 
-/** The final message in full, once there is one. A task still running has only its status. */
+/**
+ * The final message in full, once there is one. A task still running has its status and no
+ * message; either answer carries the engine, model and effort its record holds.
+ */
 export function result(projectRoot: string, taskId: string): ResultResult {
   const record = find(projectRoot, taskId);
   if (record === null) return { ok: false, reason: `no task ${taskId}` };
-  if (!isTerminal(record.status)) return { ok: true, id: record.id, status: record.status, settled: false };
+  const binding: Binding = { engine: record.engine, model: record.model ?? null, effort: record.effort ?? null };
+  if (!isTerminal(record.status)) return { ok: true, id: record.id, status: record.status, settled: false, ...binding };
   let text: string | null = null;
   try {
     text = fs.readFileSync(record.resultPath, "utf8");
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
-  return { ok: true, id: record.id, status: record.status, sessionId: record.sessionId ?? null, result: text };
+  return { ok: true, id: record.id, status: record.status, sessionId: record.sessionId ?? null, result: text, ...binding };
 }
 
 export interface ListResult {
@@ -168,7 +171,15 @@ export interface ListResult {
   /** What this pass could not decide, and what orphan cleanup would not act on. */
   errors: Array<{ id: string; reason: string }>;
   skipped: Array<{ id: string; reason: string }>;
+  /** How many settled tasks a `limit` left out; absent when it left none out. */
+  omitted?: number;
 }
+
+/**
+ * How many settled tasks `list_tasks` lists unless its caller asks for more: enough history
+ * for a lead's next step, and an answer a host reads whole however long the ledger grows.
+ */
+export const defaultSettledLimit = 20;
 
 export interface ListOptions {
   /**
@@ -177,6 +188,11 @@ export interface ListOptions {
    * read is side-effect free, and the reconciling read is the one it asks for by name.
    */
   reconcile?: boolean;
+  /**
+   * How many settled tasks to list, the newest; every active one is listed whatever it is.
+   * Absent, every task is: the operator CLI's `tasks` reads the whole ledger.
+   */
+  limit?: number;
 }
 
 /**
@@ -184,19 +200,27 @@ export interface ListOptions {
  * no caller of the tool reads a `running` task whose runner died an hour ago (design section
  * 2). The operator's `tasks` reconciles only under `--reconcile`: without the pass this is
  * the ledger exactly as it stands, the damaged files still named, and nothing in the project
- * is written.
+ * is written. A `limit` bounds the settled history after the pass, so the pass still covers
+ * the whole ledger.
  */
 export async function listTasks(projectRoot: string, status?: TaskStatus, options: ListOptions = {}): Promise<ListResult> {
-  const select = (records: readonly TaskRecord[]) => records
-    .filter((record) => status === undefined || record.status === status)
-    .sort((left, right) => right.createdAt - left.createdAt)
-    .map(view);
+  const select = (records: readonly TaskRecord[]) => {
+    const chosen = records
+      .filter((record) => status === undefined || record.status === status)
+      .sort((left, right) => right.createdAt - left.createdAt);
+    let settled = 0;
+    const kept = options.limit === undefined
+      ? chosen
+      : chosen.filter((record) => !isTerminal(record.status) || settled++ < options.limit!);
+    const omitted = chosen.length - kept.length;
+    return { tasks: kept.map(view), ...(omitted === 0 ? {} : { omitted }) };
+  };
   if (options.reconcile === false) {
     const { records, invalid } = scan(projectRoot);
-    return { ok: true, tasks: select(records), invalid, errors: [], skipped: [] };
+    return { ok: true, ...select(records), invalid, errors: [], skipped: [] };
   }
   const pass = await reconcileAndCleanup(projectRoot);
-  return { ok: true, tasks: select(scan(projectRoot).records), invalid: pass.invalid, errors: pass.errors, skipped: pass.skipped };
+  return { ok: true, ...select(scan(projectRoot).records), invalid: pass.invalid, errors: pass.errors, skipped: pass.skipped };
 }
 
 export interface Outcome {
@@ -253,11 +277,11 @@ async function terminate(projectRoot: string, taskId: string, grace: number, wai
   let record = read(projectRoot, taskId);
   if (isTerminal(record.status)) return { id: taskId, outcome: `already ${record.status}` };
 
-  if (claimable.has(record.status)) {
+  if (claimableStatuses.has(record.status)) {
     // The claim comes first: from this moment `delegate` refuses a child of this task, and
     // the runner reads the status as its own cancel.
     const claimed = await update(projectRoot, taskId, { status: "cancelling" }, Date.now(), {
-      waitSeconds, expect: (current) => claimable.has(current.status),
+      waitSeconds, expect: (current) => claimableStatuses.has(current.status),
     });
     record = claimed.record;
     if (!claimed.applied && isTerminal(record.status)) return { id: taskId, outcome: `already ${record.status}` };
@@ -361,9 +385,9 @@ export async function cancel(projectRoot: string, taskId: string, options: Cance
       };
     }
     target = record;
-    if (claimable.has(record.status)) {
+    if (claimableStatuses.has(record.status)) {
       const claimed = await update(projectRoot, taskId, { status: "cancelling" }, Date.now(), {
-        waitSeconds, expect: (current) => claimable.has(current.status),
+        waitSeconds, expect: (current) => claimableStatuses.has(current.status),
       });
       target = claimed.record;
     }

@@ -9,7 +9,10 @@ A team here is a **mode**: roles, a loop, and a git policy. You dispatch the
 roles, watch them, decide what happens next, and report. You do not do their
 work, and you never start an engine CLI yourself — a `claude`, `codex` or `grok`
 the server did not launch carries none of the guard the server puts around one,
-and none of its tasks can be waited on, cancelled or reported.
+and none of its tasks can be waited on, cancelled or reported. Nor do you start this
+server yourself — `src/server.ts`, the plugin's MCP entrypoint, under `node` or any
+other way, not even to read from it: your host starts the one copy that serves you,
+and what you need from it is one of its tools.
 
 ## Codex host setup
 
@@ -82,12 +85,16 @@ leaves an existing config alone and does not add it, but the setup skill adds it
 existing config once the user confirms. A
 `warning` in the answer means `.cross-agent/config.json` was pointed at another
 mode after this server started: which tools exist was settled when it loaded, so
-report the drift and ask for a restart instead of working around it.
+report the drift and ask for a restart instead of working around it. Under a Claude
+Code host that restart is `/mcp`, choose cross-agent, Reconnect; `/reload-plugins`
+does not restart the server.
 
 Judge `projectRoot` against the project the user works in before anything is
 dispatched. It is not always the directory you were started in: a worktree nobody
 initialized is served by its main project on purpose, and only setup run in it makes
-it a project of its own.
+it a project of its own. `describe_mode` answers `projectWarning` where the directory
+this server was started in lies in an initialized project other than `projectRoot`:
+show it to the user with the roster, and judge it as the first case below.
 
 - **Stop**, telling the user, when the working directory lies in an initialized
   project other than `projectRoot` — a worktree or checkout holding its own
@@ -112,10 +119,11 @@ it a project of its own.
 
 ## Starting a task
 
-`delegate {role, brief, cwd}` launches one task and answers with its task id:
-under `host` placement each specialist your loop names, and under `engine`
-placement the lead and no one else (`## Engine placement`), whose brief, narration,
-refusals, waits, resume and cancel are the ones this skill describes for any task.
+`delegate {role, brief, cwd}` launches one task and answers with its task id and
+the engine, model and effort it runs on: under `host` placement each specialist
+your loop names, and under `engine` placement the lead and no one else
+(`## Engine placement`), whose brief, narration, refusals, waits, resume and
+cancel are the ones this skill describes for any task.
 Add `branch` when the role works in a worktree — the mode's loop says where
 that worktree comes from and on what branch — and `engine`, `model` or `effort`
 to override the binding for this call alone. Naming another `engine` drops the
@@ -144,6 +152,19 @@ Narrate every dispatch in one line before you wait on it: *delegating `<role>` �
 `<role>#<seat>` for a seated role — to `<engine>`/`<model>` at `<effort>` in
 `<cwd>`*. The user is paying for these
 engines and cannot see them; a task nobody announced is a task nobody can stop.
+Take the engine, model and effort from the roster's line for that role or seat, or
+from your call where it names them; a model or an effort that neither the roster's
+line nor your call names is that engine's default: say so, as such. A call that names
+another engine than the roster's line is its own rule, because the server drops the
+line's model and effort with its binding: the model and the effort are your call's
+alone, and where your call names either not at all, say that engine's default for that
+one. The delegation's answer carries the engine, model and effort the task's record
+holds, a `null` being that engine's default: where it differs from what the rules above
+give, narrate the answer's. Name a task you did not
+dispatch — a lead's specialist — by the engine, model and effort its record in
+`list_tasks` carries, a `null` there being that engine's default: never guess them.
+For a task `list_tasks` leaves out, `result {task_id}` carries the same engine, model
+and effort.
 
 A refusal is an answer, not an error to retry: a request identical to a live
 task — the same role, seat, cwd and brief — is refused with the id to wait on
@@ -184,8 +205,8 @@ settled task, and a `hint` naming the call to make next. Act on the status:
 After a `wait` that timed out or came back `stalled`, call `list_tasks` before
 you wait again. `wait` runs a reconciliation pass itself when a record's own
 evidence says the ledger is adrift, but `list_tasks` reconciles unconditionally
-and refreshes the whole roster you are showing the user; one call per timeout is
-the whole of its cost.
+and refreshes the roster you are showing the user: every active task and the newest
+settled ones; one call per timeout is the whole of its cost.
 
 Never declare a task done from `check` alone: `check` reconciles nothing, so a
 record it reports as running may have lost its runner minutes ago. `check` is
@@ -197,7 +218,7 @@ task costs you many short waits, not one long one:
 
 | host | its MCP tool timeout | `timeout_seconds` to pass |
 | --- | --- | --- |
-| Claude Code | about 28 hours by default | 600 |
+| Claude Code | about 28 hours by default; a call still running at 120 s is moved to the background, where it keeps running and its answer arrives later as a task notification (`docs/probes.md#claudeCodeBackground`) | 600 |
 | Codex | `tool_timeout_sec` per server, 3600 in `.codex-plugin/plugin.json` and in the lead mount (`docs/probes.md#codexHostTimeout`) | 600 |
 | Grok | `tool_timeout_sec` per server, 6000 by default; a 600 s `wait` returned intact under a Grok host (`docs/probes.md#grokToolTimeout`) | 600 |
 
@@ -205,6 +226,13 @@ Those are the budgets of the design's "Time limits": there is no cap on a task,
 only on one call about it. `timeout_seconds` defaults to the project's
 `limits.waitDefaultSeconds`, and the silence threshold that produces `stalled`
 is `limits.stallMinutes`.
+
+Under a Claude Code host, a `wait` — or, under `host` placement, a `run_command` —
+still running at 120 s comes back at that point saying it was moved to the background
+as a task. That is the call still running, not its answer: it runs to its own end, and its
+answer, the one it would have returned, arrives later as a task notification. A
+backgrounded call is neither a timeout nor a reason to issue the same `wait` or
+`run_command` again; wait for its notification and act on the answer it carries.
 
 ## A needs-work round
 
@@ -298,8 +326,9 @@ below is yours there.
    journals the `committed` step. The two exclusions are not optional: a
    `.gitignore` the specialist wrote in its worktree outranks the repository's
    own, and the project's state is never committed to a task branch — the merge
-   refuses a branch carrying either directory anyway, and that refusal costs you
-   the run.
+   refuses a branch carrying either directory anyway, or a host's project
+   configuration — `.claude/`, `.codex/`, `.grok/`, `.mcp.json` — which the commit
+   above refuses first, naming the path; either refusal costs you the run.
 2. Then apply the project's `project.mergePolicy`. You apply it; nobody merges
    by hand under `auto`.
 
@@ -362,6 +391,9 @@ its closing report is its own final message, which you read with `result {task_i
 of the run from the ledger, then each task's final message; it exits 0, or 3 for an
 unknown `--since`, by the protocol in the operator guide's table
 (`docs/operator-guide.md`, "The operator CLI", in the cross-agent repository).
+Nor do you append to `.cross-agent/log.md` under this placement, at any point of the
+run: that file is `host` placement's, and here the lead's report and
+`cross-agent report` are the record.
 
 Under `host` placement, close the session with the same per-task list to the user,
 plus what was not verified: a suite nobody ran, a review nobody asked for, a branch
@@ -399,8 +431,9 @@ comes after it.
   `checkout`, `branch -f` or `reset` at the root: it takes no lock, and can land
   between a merge's check of HEAD and the merge.
 - A mid-session change to `.cross-agent/config.json`'s `mode` needs a server
-  restart. `list_roles` names that drift; the tools this server registered are
-  the ones its own mode declared.
+  restart — under a Claude Code host, `/mcp`, choose cross-agent, Reconnect, since
+  `/reload-plugins` does not restart the server. `list_roles` names that drift; the
+  tools this server registered are the ones its own mode declared.
 
 ## Engine placement
 

@@ -3,6 +3,7 @@ import { execFile } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { promisify } from "node:util";
+import { resolveAuthority } from "./authority.ts";
 import {
   checkConfigDocument, CONFIG_PATH, configBytes, DEFAULT_MODE, ignoreEntries, initConfig, loadConfig, loadConfigWithMode, lockWaitSeconds,
 } from "./config.ts";
@@ -10,7 +11,7 @@ import type { BoundConfig, CrossAgentConfig, InitConfigResult } from "./config.t
 import type { SandboxProfile } from "./engines/registry.ts";
 import { gitMutate } from "./gitmutate.ts";
 import type { GitMutateRequest, GitMutateResult } from "./gitmutate.ts";
-import { gitRoot, matchesPattern, nameFault } from "./gitroot.ts";
+import { BRANCH_RULE, gitRoot, matchesPattern, nameFault } from "./gitroot.ts";
 import type { GitRootResult } from "./gitroot.ts";
 import { listJournals, readJournal } from "./journal.ts";
 import type { Journal } from "./journal.ts";
@@ -18,7 +19,7 @@ import { find, isProcessAlive, isTaskId, isTerminal, projectLock, readOutcome, r
 import type { TaskOutcome, TaskRecord, TaskStatus } from "./ledger.ts";
 import { configLockName, LockHeldError } from "./locks.ts";
 import type { Lock } from "./locks.ts";
-import { answerAsk, askStatuses, listAsks } from "./mailbox.ts";
+import { answerAsk, askStatuses, listAsks, printable } from "./mailbox.ts";
 import type { AskStatus } from "./mailbox.ts";
 import { builtInModesDir, gitPolicy, loadMode } from "./modes.ts";
 import type { EffectiveGitPolicy, Mode, ModeLead, Workspace } from "./modes.ts";
@@ -39,7 +40,8 @@ import type { Located, Repository } from "./worktree.ts";
 // the bind-time config for a mode; `answer` replies to an engine-placed lead's question
 // without a host session; `report` renders the per-task log from the ledger, which is where
 // that log comes from under engine placement. Every verb that writes is the operator's, and
-// is refused inside a task's environment (`taskMarker`).
+// is refused inside a task's environment (`taskMarker`) and below a task's engine
+// (`ancestryRefusal`).
 
 const exec = promisify(execFile);
 
@@ -128,7 +130,8 @@ export interface Verb {
   codes?(parsed: Parsed): boolean;
   /**
    * Whether this command line writes the project — a config, an ask, a record, a lock, git
-   * metadata. Writing is an operator's power, refused inside a task's environment.
+   * metadata. Writing is an operator's power, refused inside a task's environment
+   * (`taskMarker`) and below a task's engine (`ancestryRefusal`).
    */
   writes: boolean | ((parsed: Parsed) => boolean);
   run(parsed: Parsed, context: Context): Promise<Answer>;
@@ -154,18 +157,9 @@ async function project(parsed: Parsed, context: Context): Promise<{ root: string
   return discoverProject(named === undefined ? [] : ["--project", named], context.env, context.cwd);
 }
 
-/**
- * A time as ISO-8601, or the number itself where no date can stand for it: the readers bound
- * a time by finiteness alone, and a renderer never throws on a time it was handed.
- */
-function iso(at: number): string {
-  const date = new Date(at);
-  return Number.isNaN(date.getTime()) ? String(at) : date.toISOString();
-}
-
-/** A time as `iso` gives it, with how long ago it was where it is a date at all. */
+/** A time as `src/mailbox.ts#printable` gives it, with how long ago it was where it is a date at all. */
 function stamp(at: number, now: number): string {
-  return Number.isNaN(new Date(at).getTime()) ? iso(at) : `${iso(at)} (${Math.max(0, Math.round((now - at) / 1000))}s ago)`;
+  return Number.isNaN(new Date(at).getTime()) ? printable(at) : `${printable(at)} (${Math.max(0, Math.round((now - at) / 1000))}s ago)`;
 }
 
 /**
@@ -258,7 +252,7 @@ function askFault(file: string, reason: string): string {
 /** A journal's steps, one line each: when, which step, the SHAs around it, and what it ran. */
 function journalSteps(journal: Journal): string[] {
   return journal.steps.map((entry) => [
-    iso(entry.at), entry.step, `${entry.before ?? "-"}→${entry.after ?? "-"}`,
+    printable(entry.at), entry.step, `${entry.before ?? "-"}→${entry.after ?? "-"}`,
     ...(entry.defaultSha === undefined ? [] : [`defaultSha ${entry.defaultSha}`]),
     ...(entry.args === undefined ? [] : [`args ${entry.args.join(" ")}`]),
   ].join("  "));
@@ -328,7 +322,7 @@ function worktreeBranchRefusal(root: string, located: Repository): { code: strin
   if (nameFault(branch) !== null) {
     return {
       code: "branch-name",
-      reason: `${root} has ${branch} checked out, a name git_root would refuse in every read of the default branch: a branch here is letters, digits, ".", "_", "/" and "-", with no ".." and no trailing ".", "/" or ".lock"`,
+      reason: `${root} has ${branch} checked out, a name git_root would refuse in every read of the default branch: ${BRANCH_RULE}`,
     };
   }
   return null;
@@ -950,7 +944,7 @@ const showVerb: Verb = {
       : `\nlast activity:\n${document.lastActivity.map((line) => `  ${line}\n`).join("")}`);
     if (document.outcome !== null) {
       const { kind, exitCode, sessionId, reason, truncated, at } = document.outcome;
-      lines.push(`\noutcome: ${[kind, `exit ${exitCode ?? "-"}`, `session ${sessionId ?? "-"}`, `at ${iso(at)}`,
+      lines.push(`\noutcome: ${[kind, `exit ${exitCode ?? "-"}`, `session ${sessionId ?? "-"}`, `at ${printable(at)}`,
         ...(reason === undefined ? [] : [`reason ${reason}`]), ...(truncated === true ? ["truncated"] : [])].join(", ")}\n`);
     }
     if (document.journal !== null) {
@@ -1252,7 +1246,7 @@ const answerVerb: Verb = {
     const { ask } = answered;
     return {
       code: EXIT.ok, document: answered,
-      text: `cross-agent: answered ask ${ask.id} of task ${ask.taskId} at ${iso(ask.answeredAt!)}\n`
+      text: `cross-agent: answered ask ${ask.id} of task ${ask.taskId} at ${printable(ask.answeredAt!)}\n`
         + `  question: ${ask.question}\n  answer: ${ask.answer}\n`,
     };
   },
@@ -1429,15 +1423,37 @@ function shape(verb: Verb): string {
 }
 
 /**
+ * Whether this command line writes, as its verb declares. It fails closed: only an explicit
+ * `false` reads, so a verb that declares nothing — which nothing here type-checks — is
+ * refused as the write it may be.
+ */
+function writing(verb: Verb, parsed: Parsed): boolean {
+  const writes: unknown = typeof verb.writes === "function" ? verb.writes(parsed) : verb.writes;
+  return writes !== false;
+}
+
+/**
  * The marker a task's environment carries, when this command line writes and the
  * environment carries one, or null. A verb that writes is an operator's power, and the deny
  * list keeps only the launch forms it names out of an engine's hands (`src/guard.ts#denyTargets`).
- * It fails closed: only an explicit `false` reads, so a verb that declares nothing — which
- * nothing here type-checks — is refused as the write it may be.
  */
 export function taskMarker(verb: Verb, parsed: Parsed, env: Readonly<NodeJS.ProcessEnv>): string | null {
-  const writes: unknown = typeof verb.writes === "function" ? verb.writes(parsed) : verb.writes;
-  return writes === false ? null : TASK_MARKERS.find((variable) => env[variable] !== undefined) ?? null;
+  return writing(verb, parsed) ? TASK_MARKERS.find((variable) => env[variable] !== undefined) ?? null : null;
+}
+
+/**
+ * The walk's reason when this process is not the operator's by ancestry, or null: a write
+ * below a task's engine is refused whatever its environment says, as a server below one
+ * serves the specialist row (`src/authority.ts#resolveAuthority`). The markers were refused
+ * before this runs, so the depth is 0 and only ancestry decides. Where no project is found,
+ * the verb itself refuses or writes in the current directory; only the ledger match depends
+ * on the root, and a marked ancestor is caught whichever ledger is read. A walk that cannot
+ * finish refuses.
+ */
+async function ancestryRefusal(parsed: Parsed, context: Context): Promise<string | null> {
+  const found = await project(parsed, context);
+  const authority = resolveAuthority("root" in found ? found.root : context.cwd, context.env, { maxDepth: Infinity });
+  return authority.row === "operator" ? null : authority.reason;
 }
 
 /**
@@ -1523,12 +1539,15 @@ export async function runCli(
     return EXIT.ok;
   }
   // Checked on the command line as read, so a usage error is still a 2 and help is still
-  // help, and before the verb runs, so a refused write has written nothing.
+  // help, and before the verb runs, so a refused write has written nothing: the markers
+  // first, then, for a write they let through, the process's ancestry.
   const marker = taskMarker(verb, parsed, env);
   let answered: Answer;
   try {
-    const reason = `${marker} is set in this environment: ${name} is an operator's command, and an engine reaches the project through its server, never this CLI`;
-    answered = marker !== null
+    const evidence = marker !== null ? `${marker} is set in this environment`
+      : writing(verb, parsed) ? await ancestryRefusal(parsed, { cwd, env }) : null;
+    const reason = `${evidence}: ${name} is an operator's command, and an engine reaches the project through its server, never this CLI`;
+    answered = evidence !== null
       ? refused(reason, verb.codes?.(parsed) === true ? { ok: false, code: "inside-a-task", reason } : undefined)
       : await verb.run(parsed, { cwd, env });
   } catch (error) {
@@ -1551,8 +1570,12 @@ export async function runCli(
 if (isMainModule(import.meta.url)) {
   // A reader that leaves early (`cross-agent report | head`) fails the next write with
   // EPIPE. The answer is settled by then, so the rest of the output is dropped and the exit
-  // code stays the verb's, set below; any other error on stdout still throws.
-  process.stdout.on("error", (error: NodeJS.ErrnoException) => { if (error.code !== "EPIPE") throw error; });
+  // code stays the verb's, set below; any other error on stdout still throws. With
+  // `2>&1 | head`, the notes a verb writes on stderr reach the same reader that has gone, and
+  // are dropped the same way.
+  const dropOnEpipe = (error: NodeJS.ErrnoException) => { if (error.code !== "EPIPE") throw error; };
+  process.stdout.on("error", dropOnEpipe);
+  process.stderr.on("error", dropOnEpipe);
   void runCli(process.argv.slice(2), process.cwd(), {
     out: (text) => process.stdout.write(text),
     err: (text) => process.stderr.write(text),
