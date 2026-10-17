@@ -32,6 +32,9 @@ those hooks stay inert until Grok trusts the plugin.
 cross-agent is the exception: Grok attaches it per project, as its
 [use case](#cross-agent-use-case) says.
 
+OpenClaw: cross-agent only, read in place from a clone of this marketplace,
+as its [use case](#cross-agent-use-case) says.
+
 ## Plugins
 
 - [Project Steward](#project-steward-use-case) — cross-agent project
@@ -39,7 +42,7 @@ cross-agent is the exception: Grok attaches it per project, as its
   coding agents.
 - [Paperforge](#paperforge-use-case) - academic paper writing, mock review, revision, and paper workspace scaffolding.
 - [cross-agent](#cross-agent-use-case) — run headless `claude`, `codex`, and
-  `grok` processes as one team from Claude Code, Codex, or Grok.
+  `grok` processes as one team from Claude Code, Codex, Grok, or OpenClaw.
 
 ### Use Case
 
@@ -121,8 +124,8 @@ Example interactions:
 
 #### Cross-Agent Use Case
 
-Use cross-agent when you want your Claude Code, Codex, or Grok session to
-hand work to the other engines: a one-off review or question to another
+Use cross-agent when you want your Claude Code, Codex, Grok, or OpenClaw
+session to hand work to the other engines: a one-off review or question to another
 model, or a whole team — planner, plan reviewer, implementer, parallel code
 reviewers on different engines, and a resolver — that works each task in its
 own git worktree and merges only tested, reviewed work. It needs Linux, git,
@@ -159,6 +162,15 @@ repository rather than with `grok plugin install`, which would load it in
 every Grok session:
 [Install it in Grok](https://github.com/WSH95/cross-agent-cli/blob/main/docs/install.md#install-it-in-grok).
 Then run `/setup` in the trusted project, or ask Grok to set up cross-agent.
+
+For OpenClaw, which runs the one-consultant `solo` mode and the background team
+(`dev-team-engine`) but not the team whose loop runs in your own session, clone this
+marketplace and keep the clone where it is: list its
+`cross-agent/claude/plugins/cross-agent/skills` in `skills.load.extraDirs`, and
+register the server with `openclaw mcp add`, its `cwd` your project's root:
+[Install it in OpenClaw](https://github.com/WSH95/cross-agent-cli/blob/main/docs/install.md#install-it-in-openclaw).
+Then ask OpenClaw to set up cross-agent for that project; the background team's lead
+puts its questions to you in the chat.
 Grok also loads the plugins Claude Code installs, so with both on one
 machine, see that guide's Claude Code section for the switch.
 
