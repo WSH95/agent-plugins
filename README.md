@@ -175,7 +175,8 @@ then register its server with `openclaw mcp add`, the command naming the install
 [Install it in OpenClaw](https://github.com/WSH95/cross-agent-cli/blob/main/docs/install.md#install-it-in-openclaw).
 Or ask OpenClaw to set up cross-agent for that project, which registers it once you confirm;
 the background team's lead puts its questions to you in the chat. Update with `openclaw
-plugins update cross-agent` while no task is running.
+plugins update cross-agent --accept-capabilities` while no task is running: OpenClaw asks for
+the plugin's capabilities again on every update from this source.
 Grok also loads the plugins Claude Code installs, so with both on one
 machine, see that guide's Claude Code section for the switch.
 
