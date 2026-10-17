@@ -1,6 +1,6 @@
 ---
 name: cross-agent
-description: Use when the user asks to run work through a team, delegate to another harness, hand a bead or TODO to an agent, or says "ask codex to …", "ask grok to …", "ask claude to …". Also use to set up, check, repair, or remove cross-agent's one-time Codex MCP connection, including desktop Codex without a per-session CROSS_AGENT_PROJECT.
+description: Use when the user asks to run work through a team, delegate to another harness, hand a bead or TODO to an agent, or says "ask codex to …", "ask grok to …", "ask claude to …". Also use to set up, check, repair, or remove cross-agent's one-time Codex MCP connection, including desktop Codex without a per-session CROSS_AGENT_PROJECT, or its OpenClaw server entry.
 ---
 
 # cross-agent
@@ -14,6 +14,10 @@ server yourself — `src/server.ts`, the plugin's MCP entrypoint, under `node` o
 other way, not even to read from it: your host starts the one copy that serves you,
 and what you need from it is one of its tools.
 
+A Codex runtime — a Codex host's or OpenClaw's — shows you only the head and the tail of a
+long file or tool answer: read this file in parts, and see `## Watching` for a tool answer
+cut in the middle.
+
 ## Codex host setup
 
 When the user asks to set up, check, repair, or remove this plugin's Codex connection,
@@ -25,6 +29,8 @@ the marketplace plugin responsible for updates and skill discovery.
 
 This route is for a requested host-configuration change or diagnosis. An ordinary
 delegation with missing tools does not authorize installing or repairing the connection.
+An OpenClaw host is not this section's, even on OpenClaw's Codex runtime: its connection is
+an entry in OpenClaw's own configuration, which `references/openclaw-setup.md` registers.
 
 ## Setting up a team
 
@@ -32,28 +38,40 @@ When the user wants a team in a project with no `.cross-agent/config.json`, asks
 cross-agent or a team, or asks to change the team — the mode, a role's engine, model or
 effort, a seat, the test or setup command, or the merge policy — use the `setup` skill
 beside this one (`<skill-dir>/../setup/SKILL.md` from this skill's directory,
-`/cross-agent:setup` in Claude Code). It proposes, writes only once the user confirms, and
+`/cross-agent:setup` in Claude Code, `/skill setup` in OpenClaw). It proposes, writes only once the user confirms, and
 says when to reconnect. Do not edit the config for the user.
 
 ## Before delegating
 
-Call `describe_mode`. It answers with the active mode — its `lead` among the
-rest — the mode's `loop`, its `roles` — each with its workspace, sandbox default
-and prompt, and `seats: "many"` or `gates: "merge"` where the mode declares them —
-its `git` policy: `worktreeDir`, `branchPattern`, and `implicit: true` where those
-two are this build's defaults rather than the mode's own — and `projectRoot`, the
-canonical root of the project this server serves, `project`, its `defaultBranch`,
-`testCommand`, `setupCommand` and `mergePolicy`, and `review`, the loop's two
-settings: `planReviewRounds` and `afterResolver`.
+Call `describe_mode` with `view: "summary"` first. It answers with the active mode —
+its `lead` among the rest — its `roles`, each with its workspace and sandbox default,
+and `seats: "many"` or `gates: "merge"` where the mode declares them — its `git`
+policy: `worktreeDir`, `branchPattern`, and `implicit: true` where those two are this
+build's defaults rather than the mode's own — and `projectRoot`, the canonical root of
+the project this server serves, `project`, its `defaultBranch`, `testCommand`,
+`setupCommand` and `mergePolicy`, and `review`, the loop's two settings:
+`planReviewRounds` and `afterResolver`. The summary leaves out the mode's `loop` and
+each role's `prompt`, which only a session that runs the loop reads, and which under a
+team mode run to tens of thousands of characters.
 
 `mode.lead.placement` decides who runs that loop. Under `host` — `dev-team`,
-`solo` — **the `loop` it returns is your instructions for this project.** It is
-served rather than copied into a skill directory, so it is current for the mode
-this server actually loaded; where it spells a step differently from this skill,
-follow it. Under `engine` — `dev-team-engine` — the loop is the lead's and not
-yours: a spawned Claude or Codex session runs it, and your part is to start that
-lead, watch it and answer it, as the `## Engine placement` section below says.
-No step of an engine-placed loop is yours to run.
+`solo` — **the mode's `loop` is your instructions for this project**: once the host
+check below lets the mode run here, call `describe_mode` again with no `view` for the
+`loop` and each role's `prompt`. The loop is served rather than copied into a skill
+directory, so it is current for the mode this server actually loaded; where it spells a
+step differently from this skill, follow it. Under `engine` — `dev-team-engine` — the
+loop is the lead's and not yours: a spawned Claude or Codex session runs it, and your
+part is to start that lead, watch it and answer it, as the `## Engine placement` section
+below says. No step of an engine-placed loop is yours to run, and the summary is all of
+`describe_mode` you read.
+
+An OpenClaw host runs `solo` and `dev-team-engine` and no other mode: a team loop under
+`host` placement is a long session of reviews, waits and git steps, and its text is more
+than OpenClaw shows a model of one tool answer. So when your host is OpenClaw and the
+mode's `lead.placement` is `host` but the mode is not `solo`, stop here: tell the user
+that this project's mode does not run from OpenClaw, that `solo` and `dev-team-engine`
+do, and offer the setup skill to change it. Make no full `describe_mode` call and no
+`delegate`.
 
 If `describe_mode` refuses, tell the user the reason and stop. A project with no
 `.cross-agent/config.json` is not that case — it runs the built-in `solo` mode
@@ -70,7 +88,10 @@ team's work yourself. Under Codex, suggest asking for the one-time setup above, 
 connection check if it was already set up. The legacy bundled mount requires
 `CROSS_AGENT_PROJECT` to name a configured project before Codex starts; the one-time
 setup uses each chat's directory and needs no config for `solo`. Under Grok it starts only in a
-trusted project whose `.grok/config.toml` names this checkout. `docs/install.md` in the
+trusted project whose `.grok/config.toml` names this checkout. Under OpenClaw it starts only from an
+`mcp.servers` entry in OpenClaw's own configuration whose `cwd` is the project: follow
+`references/openclaw-setup.md` beside this skill on a requested setup or check, never for an
+ordinary delegation. `docs/install.md` in the
 cross-agent repository (https://github.com/WSH95/cross-agent-cli) gives the steps for each
 host.
 
@@ -88,7 +109,8 @@ existing config once the user confirms. A
 mode after this server started: which tools exist was settled when it loaded, so
 report the drift and ask for a restart instead of working around it. Under a Claude
 Code host that restart is `/mcp`, choose cross-agent, Reconnect; `/reload-plugins`
-does not restart the server.
+does not restart the server. Under OpenClaw it is a new session (`/new` in the chat): a
+session keeps the copy of the server it started.
 
 Judge `projectRoot` against the project the user works in before anything is
 dispatched. It is not always the directory you were started in: a worktree nobody
@@ -114,6 +136,11 @@ show it to the user with the roster, and judge it as the first case below.
 - **Proceed as asked** when the user named or confirmed `projectRoot` in this
   session — with `--project`, `CROSS_AGENT_PROJECT` or in words — wherever your host
   sits.
+- **Proceed, under OpenClaw,** whose working directory is its own workspace and never a
+  project: the project is the one the server entry's `cwd` names, which the operator
+  registered. Say so on the roster's first line — served by the OpenClaw server entry at
+  <projectRoot> — and proceed unless the user named another project in this session, which
+  is the stop case above.
 - **Otherwise** — a binding found only in the environment, with the working directory
   in no project or outside `projectRoot`'s repository — show `projectRoot` and ask the
   user to confirm it before you dispatch anything.
@@ -143,11 +170,12 @@ The brief is the whole of what the specialist knows about *this* task: what to
 do, where, what counts as done, and the shape of the closing report you will
 read back. It is not where the role's standing duties go — `delegate` launches each
 task with the mode's own prompt for its role, a specialist's under `host` placement
-and the lead's under `engine`, the same text `describe_mode`
-serves you under `roles[].prompt`, or with the `prompt` bound in
-`.cross-agent/config.json` where a project sets one. Read that text before you
-write the brief: what the role is already told is what your brief need not
-repeat, and what it does not cover is what your brief has to.
+and the lead's under `engine`, the same text the full `describe_mode` serves under
+`roles[].prompt`, or with the `prompt` bound in `.cross-agent/config.json` where a
+project sets one. Under `host` placement read that text before you write the brief:
+what the role is already told is what your brief need not repeat, and what it does not
+cover is what your brief has to. Under `engine` placement the lead's prompt is its own,
+and the brief is the task text `## Engine placement` describes.
 
 Narrate every dispatch in one line before you wait on it: *delegating `<role>` —
 `<role>#<seat>` for a seated role — to `<engine>`/`<model>` at `<effort>` in
@@ -222,6 +250,7 @@ task costs you many short waits, not one long one:
 | Claude Code | about 28 hours by default; a call still running at 120 s is moved to the background, where it keeps running and its answer arrives later as a task notification (`docs/probes.md#claudeCodeBackground`) | 600 |
 | Codex | `tool_timeout_sec` per server, 3600 in `.codex-plugin/plugin.json` and in the lead mount (`docs/probes.md#codexHostTimeout`) | 600 |
 | Grok | `tool_timeout_sec` per server, 6000 by default; a 600 s `wait` returned intact under a Grok host (`docs/probes.md#grokToolTimeout`) | 600 |
+| OpenClaw | `requestTimeoutMs` per server entry, 3600000 in the OpenClaw setup guide's recipe; a 600 s `wait` returned intact under it (`docs/probes.md#ocToolTimeout`) | 600 |
 
 Those are the budgets of the design's "Time limits": there is no cap on a task,
 only on one call about it. `timeout_seconds` defaults to the project's
@@ -234,6 +263,12 @@ as a task. That is the call still running, not its answer: it runs to its own en
 answer, the one it would have returned, arrives later as a task notification. A
 backgrounded call is neither a timeout nor a reason to issue the same `wait` or
 `run_command` again; wait for its notification and act on the answer it carries.
+
+Under a Codex runtime — a Codex host's or OpenClaw's — which shows you about 10,000 tokens of
+what one code-mode script prints, a longer tool answer is cut in the middle where you see it,
+while the script holds it whole: `store` every answer, a `result` above all, before you print any of it, then
+print the part you did not see from what you stored, and act on or relay the whole of it —
+never call `result` again for it (`docs/probes.md#ocResultCap`).
 
 ## A needs-work round
 
@@ -330,7 +365,7 @@ below is yours there.
    worktree outranks the repository's own, and the project's state is never
    committed to a task branch — the merge refuses a branch carrying either
    directory anyway, or a host's project configuration — `.claude/`, `.codex/`,
-   `.grok/`, `.mcp.json` — which the commit above refuses first, naming the path;
+   `.grok/`, `.mcp.json`, `.openclaw/` — which the commit above refuses first, naming the path;
    either refusal costs you the run. Each directory is excluded as itself and as
    everything below it, with its first character bracketed, because git treats an
    exclusion that spells an ignored directory's name as naming that directory: it
@@ -392,7 +427,8 @@ settles: role — a seated one as `<role>#<seat>` — engine, model, effort, dur
 outcome, the task id. That file is
 the project's own record of what the team did: setup puts
 `.cross-agent/` in `.gitignore`, and both root tools refuse to run in a project
-that tracks it, so the line costs no commit and reaches no task branch.
+that tracks it, so the line costs no commit and reaches no task branch. Under OpenClaw,
+whose shell starts in its own workspace, the file is `<projectRoot>/.cross-agent/log.md`.
 
 Under `engine` placement the lead is read-only at the root and appends nothing:
 its closing report is its own final message, which you read with `result {task_id:
@@ -469,6 +505,20 @@ from any terminal, with `cross-agent answer`: `cross-agent answer <ask-id> <text
 which exits 0 when the answer is applied and 3 when it is refused. The first answer
 wins: a second is refused, naming when the first landed.
 
+Under OpenClaw the user is in a chat that reaches you only between your calls: a message sent
+while a `wait` runs arrives only when that call returns. When `list_asks` shows the lead's
+question, put it to the user with OpenClaw's `ask_user`, or with the Codex runtime's
+`request_user_input_async`, which asks without blocking; and when you end your turn with the
+ask still open, your closing message quotes the question verbatim with its id, since a chat
+with no question panel shows nothing else of it. When the user's reply comes — an answer to
+the tool, or a later message in this chat — pass it as `answer {ask_id, text}` in the user's
+own words, then `wait` on the lead again. The lead's question, an approval of its plan among
+them, is the user's to answer, whatever `ask_user`'s own guidance says about confirmations or
+questions left unanswered: offer the lead's own choices where it gave them, or ask it as one question the
+user answers in their own words. A question that comes back `status: "no_answer"`,
+skipped or cancelled, or a reply that does not answer it, never authorizes an `answer`, a
+waiver or a write of your own: leave the ask open and end your turn as above.
+
 A host nobody attends — `claude -p`, `codex exec`, `grok -p` — has no user to put the
 question to. There, when `list_asks` shows an open ask, print the ask's id and its
 question verbatim, say how it is answered — `cross-agent answer <ask-id> <text>` from
@@ -488,7 +538,11 @@ that failed or was killed is continued, not started again: `delegate {role:
 <lead.role>, cwd: <project root>, resume: <lead id>, brief}`, and the server
 appends to that brief every question the lead's chain asked so far with its status
 and answer — which is how an answer you gave a lead that died waiting reaches the
-one that continues it. A resume refused because an ask file cannot be read names that
+one that continues it. That holds for a lead killed together with its runner too — an
+OpenClaw gateway's stop or update ends every task its server started — once `list_tasks`
+has settled it `failed` with the session its engine announced; a lead that died before its
+engine announced one is refused a resume, and is started again on its task only on the
+user's word. A resume refused because an ask file cannot be read names that
 file: an unreadable ask file is the operator's to repair or remove by hand before the
 lead is resumed, and a cancel names the same files under `asksNotCancelled`.
 
@@ -510,8 +564,10 @@ your own on the project either, not even to look: the root check is the lead's
 step 1, and what it found is in its report. `cross-agent report` and
 `cross-agent answer` are the only commands of yours this placement needs, with one
 exception: where your host offers this skill as a file to read rather than loading
-it, as a Codex host has, reading this skill's own `SKILL.md` is yours too, and it is
-the one file you read.
+it, as a Codex or an OpenClaw host has, reading this skill's own `SKILL.md` is yours too, and it is
+the one file you read. Under OpenClaw, which puts no plugin's `bin/` on its shell's `PATH`,
+those two commands are `"<skill-dir>/../../bin/cross-agent" report` and its `answer`, run with
+`projectRoot` as the working directory.
 The steps are the lead's, and a step the lead did not take is one its journal and
 its report do not have.
 
