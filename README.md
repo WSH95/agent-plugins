@@ -32,8 +32,11 @@ those hooks stay inert until Grok trusts the plugin.
 cross-agent is the exception: Grok attaches it per project, as its
 [use case](#cross-agent-use-case) says.
 
-OpenClaw: cross-agent only, read in place from a clone of this marketplace,
-as its [use case](#cross-agent-use-case) says.
+OpenClaw (cross-agent only, as its [use case](#cross-agent-use-case) says):
+
+```bash
+openclaw plugins install cross-agent --marketplace https://github.com/WSH95/agent-plugins --force --accept-capabilities
+```
 
 ## Plugins
 
@@ -164,13 +167,15 @@ every Grok session:
 Then run `/setup` in the trusted project, or ask Grok to set up cross-agent.
 
 For OpenClaw, which runs the one-consultant `solo` mode and the background team
-(`dev-team-engine`) but not the team whose loop runs in your own session, clone this
-marketplace and keep the clone where it is: list its
-`cross-agent/claude/plugins/cross-agent/skills` in `skills.load.extraDirs`, and
-register the server with `openclaw mcp add`, its `cwd` your project's root:
+(`dev-team-engine`) but not the team whose loop runs in your own session, install the
+plugin from this marketplace's git source as shown under Installing (`--force` because the
+source is outside ClawHub, `--accept-capabilities` for the server and skills it declares),
+then register its server with `openclaw mcp add`, the command naming the installed copy's
+`src/server.ts` and its `cwd` your project's root:
 [Install it in OpenClaw](https://github.com/WSH95/cross-agent-cli/blob/main/docs/install.md#install-it-in-openclaw).
-Then ask OpenClaw to set up cross-agent for that project; the background team's lead
-puts its questions to you in the chat.
+Or ask OpenClaw to set up cross-agent for that project, which registers it once you confirm;
+the background team's lead puts its questions to you in the chat. Update with `openclaw
+plugins update cross-agent` while no task is running.
 Grok also loads the plugins Claude Code installs, so with both on one
 machine, see that guide's Claude Code section for the switch.
 
