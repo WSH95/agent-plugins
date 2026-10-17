@@ -101,6 +101,14 @@ export interface ModeDescription {
   git: EffectiveGitPolicy;
 }
 
+/** `describe_mode {view: "summary"}`: the mode's facts without its loop or any role's prompt. */
+export interface ModeSummary {
+  view: "summary";
+  mode: ModeDescription["mode"];
+  roles: Array<Omit<ModeDescription["roles"][number], "prompt">>;
+  git: EffectiveGitPolicy;
+}
+
 /** The role every mode carries, whether or not it declares one (design, "Modes"). */
 export const CONSULT_ROLE = "consult";
 
@@ -116,12 +124,15 @@ const DEFAULT_GIT_POLICY: GitPolicy = { worktreeDir: ".worktrees", branchPattern
  * only in a worktree `delegate` made for it, and it runs git in neither: the session that
  * delegated it commits and merges its work (design section 4).
  */
-const consultPrompt = `You are the consultant for this task. You work in the directory you were given and
-nowhere else: at the project root you are read-only and you answer rather than change
-anything, and in a task worktree of your own you may edit files — but you never run git,
-because the session that delegated you commits and merges what you leave there. The
-project's task-tracking, handoff and commit instructions belong to the session that runs
-the loop, never to a specialist.
+const consultPrompt = `You are the consultant for this task. The directory you were given is the project you
+work on: look for its files, its instructions and its code there, and search no directory
+above or beside it for them. Read outside it only what the brief needs, such as a
+dependency's source, a tool's documentation or a path the brief names. You change files
+in a task worktree of your own and nowhere else: at the project root you are read-only
+and you answer rather than change anything, and in your worktree you may edit its files —
+but you never run git, because the session that delegated you commits and merges what you
+leave there. The project's task-tracking, handoff and commit instructions belong to the
+session that runs the loop, never to a specialist.
 
 Run plain shell commands: a program with its arguments and redirections, joined to the
 next by \`;\`, \`&&\` or \`|\`, and read an exit status with \`echo "exit $?"\`. Some engines'
@@ -465,11 +476,7 @@ export function describeMode(modesDir: string, name: string): ModeDescription | 
   }
   try {
     const loop = readFileSync(mode.loopFile, "utf8");
-    const roles = mode.roles.map((role) => ({
-      key: role.key, title: role.title, workspace: role.workspace, sandboxDefault: role.sandboxDefault,
-      ...(role.seats === undefined ? {} : { seats: role.seats }), ...(role.gates === undefined ? {} : { gates: role.gates }),
-      prompt: rolePrompt(mode, role),
-    }));
+    const roles = mode.roles.map((role) => ({ ...roleFields(role), prompt: rolePrompt(mode, role) }));
     return {
       mode: { id: mode.id, release: mode.release, name: mode.name, summary: mode.summary, lead: mode.lead },
       loop,
@@ -479,4 +486,33 @@ export function describeMode(modesDir: string, name: string): ModeDescription | 
   } catch (error) {
     return { reason: `mode ${JSON.stringify(name)}: ${message(error)}` };
   }
+}
+
+/**
+ * The active mode without its text: what an engine-placed lead reads, whose instructions are
+ * the loop and its own role prompt already, and whose specialists each launch with their own
+ * (atc-s96.162). It reads no loop or prompt file, and a mode that cannot be read is a reason,
+ * as `describeMode` answers it.
+ */
+export function describeModeSummary(modesDir: string, name: string): ModeSummary | { reason: string } {
+  let mode: Mode;
+  try {
+    mode = loadMode(modesDir, name);
+  } catch (error) {
+    return { reason: message(error) };
+  }
+  return {
+    view: "summary",
+    mode: { id: mode.id, release: mode.release, name: mode.name, summary: mode.summary, lead: mode.lead },
+    roles: mode.roles.map(roleFields),
+    git: gitPolicy(mode),
+  };
+}
+
+/** A role as `describe_mode` answers it, but its prompt: `seats` and `gates` only where the mode declares them. */
+function roleFields(role: ModeRole): Omit<ModeDescription["roles"][number], "prompt"> {
+  return {
+    key: role.key, title: role.title, workspace: role.workspace, sandboxDefault: role.sandboxDefault,
+    ...(role.seats === undefined ? {} : { seats: role.seats }), ...(role.gates === undefined ? {} : { gates: role.gates }),
+  };
 }
