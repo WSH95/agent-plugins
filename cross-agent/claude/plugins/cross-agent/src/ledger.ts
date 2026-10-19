@@ -405,19 +405,22 @@ function readRecord(file: string): TaskRecord {
  * One JSON document, written whole: a temporary file in the same directory and a rename,
  * so a reader sees the whole previous document or the whole new one and never a partial
  * write. A value that cannot be serialized leaves nothing behind, temporary included.
+ * Given a mode, the file has it whatever the umask, and its temporary is created at it:
+ * `.cross-agent/watch.json`'s token is never readable at any other.
  */
-export function writeAtomic(file: string, value: unknown): void {
-  writeTextAtomic(file, JSON.stringify(value, null, 2) + "\n");
+export function writeAtomic(file: string, value: unknown, mode?: number): void {
+  writeTextAtomic(file, JSON.stringify(value, null, 2) + "\n", mode);
 }
 
 /**
  * `writeAtomic`'s text form: a `.<name>.<random>.tmp` beside the file, renamed over it,
  * removed on failure. Given a mode, the temporary takes it before the rename, so the file
- * keeps the permissions it had rather than taking the umask's.
+ * keeps the permissions it had rather than taking the umask's. It is created at that mode
+ * too, never wider than it, so no reader can open it before the mode is set.
  */
 function writeTextAtomic(file: string, contents: string, mode?: number): void {
   const temporary = path.join(path.dirname(file), `.${path.basename(file)}.${randomBytes(12).toString("base64url")}.tmp`);
-  const fd = fs.openSync(temporary, "wx");
+  const fd = fs.openSync(temporary, "wx", mode ?? 0o666);
   try {
     try {
       // fchmod, unlike open's own mode argument, is not narrowed by the umask.

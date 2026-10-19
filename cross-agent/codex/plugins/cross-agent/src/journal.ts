@@ -59,10 +59,17 @@ export interface StepData {
   branchHead?: string;
 }
 
-// A slug names a file here, a directory under .worktrees, and a branch, so it is one path
-// segment of the same alphabet the ledger allows an id, and never `.` or `..`.
+/**
+ * Whether `text` can be a slug. A slug names a file here, a directory under .worktrees, and
+ * a branch, so it is one path segment of the same alphabet the ledger allows an id, and
+ * never `.` or `..`.
+ */
+export function isSlug(text: unknown): text is string {
+  return typeof text === "string" && /^[A-Za-z0-9_][A-Za-z0-9._-]*$/.test(text);
+}
+
 function journalFile(projectRoot: string, slug: string): string {
-  if (typeof slug !== "string" || !/^[A-Za-z0-9_][A-Za-z0-9._-]*$/.test(slug)) {
+  if (!isSlug(slug)) {
     throw new Error(`invalid slug ${JSON.stringify(slug)}: expected [A-Za-z0-9._-], starting with a letter, digit, or underscore`);
   }
   return path.resolve(projectRoot, ".cross-agent", "journal", `${slug}.json`);
@@ -158,7 +165,7 @@ export function listJournals(projectRoot: string): string[] {
     throw error;
   }
   return entries
-    .filter((entry) => entry.isFile() && /^[A-Za-z0-9_][A-Za-z0-9._-]*\.json$/.test(entry.name))
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".json") && isSlug(entry.name.slice(0, -".json".length)))
     .map((entry) => entry.name.slice(0, -".json".length))
     .sort();
 }
