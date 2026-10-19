@@ -117,7 +117,7 @@ export const CONSULT_ROLE = "consult";
  * which is every mode with no worktree role: a one-shot needs a directory and a branch
  * name whatever team it was asked of, and these are the two the built-in team uses.
  */
-const DEFAULT_GIT_POLICY: GitPolicy = { worktreeDir: ".worktrees", branchPattern: "task/*" };
+export const DEFAULT_GIT_POLICY: GitPolicy = { worktreeDir: ".worktrees", branchPattern: "task/*" };
 
 /**
  * The built-in consultant's own text. It is read-only at the project root and writable

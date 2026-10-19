@@ -27,8 +27,12 @@ import { discoverProject, holdsConfig, isMainModule, parseFlags } from "./projec
 import { waiveReview } from "./review.ts";
 import { defaultBranchFault, propose } from "./setup.ts";
 import type { ProjectRepository, SetupProposal } from "./setup.ts";
+import { span, summaryLine } from "./steps.ts";
 import { cancel, listTasks, result } from "./tasks.ts";
 import type { Outcome } from "./tasks.ts";
+import { follow } from "./watch.ts";
+import type { WatchEvent } from "./watch.ts";
+import { serveWatch } from "./web.ts";
 import { enclosingWorktree, gitEnvironment, locateRepository, nestedReason, ownGit, verifyWorktree } from "./worktree.ts";
 import type { Located, Repository } from "./worktree.ts";
 
@@ -39,7 +43,8 @@ import type { Located, Repository } from "./worktree.ts";
 // the stall `wait` and `check` wrote rather than taking a reading of its own. `init` writes
 // the bind-time config for a mode; `answer` replies to an engine-placed lead's question
 // without a host session; `report` renders the per-task log from the ledger, which is where
-// that log comes from under engine placement. Every verb that writes is the operator's, and
+// that log comes from under engine placement; `watch` follows every active task's stream
+// until Ctrl-C, its answer written as it goes. Every verb that writes is the operator's, and
 // is refused inside a task's environment (`taskMarker`) and below a task's engine
 // (`ancestryRefusal`).
 
@@ -91,6 +96,8 @@ export interface Parsed {
 interface Context {
   cwd: string;
   env: Readonly<NodeJS.ProcessEnv>;
+  /** Where a verb that answers as it goes writes: `watch`, whose answer never ends on its own. */
+  write: CliOutput;
 }
 
 /** What a verb answers: its exit code, the one document `--json` prints, and what a person reads. */
@@ -105,6 +112,8 @@ interface Answer {
   stream?: "stdout" | "stderr";
   /** For stderr whatever the code, and never under `--json`, where the document carries it. */
   notes?: string;
+  /** The verb wrote its answer through `Context.write` as it went, and nothing more is printed. */
+  streamed?: true;
 }
 
 export interface Verb {
@@ -171,15 +180,6 @@ function elapsedSeconds(task: { status: TaskStatus; createdAt: number; updatedAt
   return Math.max(0, Math.round((until - task.createdAt) / 1000));
 }
 
-/** Seconds as a person reads a span: `45s`, `12m05s`, `3h04m`, `2d03h`. */
-function span(seconds: number): string {
-  const two = (value: number) => String(value).padStart(2, "0");
-  if (seconds < 60) return `${seconds}s`;
-  if (seconds < 3_600) return `${Math.floor(seconds / 60)}m${two(seconds % 60)}s`;
-  if (seconds < 86_400) return `${Math.floor(seconds / 3_600)}h${two(Math.floor(seconds / 60) % 60)}m`;
-  return `${Math.floor(seconds / 86_400)}d${two(Math.floor(seconds / 3_600) % 24)}h`;
-}
-
 /** What runs a task, as one cell: `engine/model/effort`, `-` for what is not set. */
 function runsOn(task: { engine: string; model?: string | null; effort?: string | null }): string {
   return `${task.engine}/${task.model ?? "-"}/${task.effort ?? "-"}`;
@@ -235,12 +235,27 @@ function lineCount(parsed: Parsed, fallback: number): number {
 }
 
 /**
- * The record `id` names, or null when it names none. An id outside the ledger's alphabet
- * names none either, and is answered as an unknown one is rather than thrown at
- * (`src/ledger.ts#find`, whose path refuses it).
+ * The record `id` names for `show` and `log`, or why it names none: a task's whole id, or a
+ * start of it that only one task's id begins with, so the six characters `watch` prints are
+ * enough. A start two ids share names neither, and neither does one that also begins the id
+ * of a task file no reader can judge, which could be the task meant; each refusal names
+ * them. An id outside the ledger's alphabet names none, and is answered as an unknown one is
+ * rather than thrown at (`src/ledger.ts#find`, whose path refuses it). `cancel` takes only a
+ * whole id: it is the one of the three that writes, and its cascade makes a wrong target costly.
  */
-function taskNamed(root: string, id: string): TaskRecord | null {
-  return isTaskId(id) ? find(root, id) : null;
+function taskNamed(root: string, id: string): { record: TaskRecord } | { reason: string } {
+  const none = { reason: `no task ${id}` };
+  if (!isTaskId(id)) return none;
+  // A whole id is read alone, so a damaged record it names fails as it always has.
+  const exact = find(root, id);
+  if (exact !== null) return { record: exact };
+  const { records, invalid } = scan(root);
+  const files = invalid.filter((entry) => path.basename(entry.file, ".json").startsWith(id)).map((entry) => entry.file).sort();
+  if (files.length > 0) return { reason: `${id} begins the id of a task file no reader can judge: ${files.join(", ")}; give the whole id` };
+  const named = records.filter((record) => record.id.startsWith(id));
+  if (named.length === 1) return { record: named[0] };
+  if (named.length === 0) return none;
+  return { reason: `${named.length} tasks' ids begin with ${id}: ${named.map((record) => record.id).sort().join(", ")}; give more of the id` };
 }
 
 /** A damaged ask file's reason, less the file name the mailbox already put at its head (`src/mailbox.ts#listAsks`). */
@@ -865,7 +880,8 @@ const tasksVerb: Verb = {
 
 const showVerb: Verb = {
   usage: "cross-agent show <id> [--lines <n>] [--project <root>]",
-  summary: "one task: its record, its last activity, its outcome, its journal and its final message",
+  summary: "one task, named by its whole id or by a start of it that only one task's id begins with: its record, its last activity, "
+    + "its outcome, its journal and its final message",
   positionals: ["id"],
   flags: { "--lines": "n" },
   check: linesCheck,
@@ -877,8 +893,9 @@ const showVerb: Verb = {
     // What `check` and `result` read, and no stall reading: the status is the one the last
     // `wait` or `check` wrote, because those two are the stall clock's only readers and
     // this command writes nothing (design, "Time limits").
-    const record = taskNamed(found.root, id);
-    if (record === null) return refused(`no task ${id}`);
+    const named = taskNamed(found.root, id);
+    if ("reason" in named) return refused(named.reason);
+    const { record } = named;
     const now = Date.now();
     // Everything shown is this one record's: an unsettled one has no final message whatever
     // its result file holds, and `result` reads the record again, so a runner that settled
@@ -960,7 +977,8 @@ const showVerb: Verb = {
 
 const logVerb: Verb = {
   usage: "cross-agent log <id> [--lines <n>] [--project <root>]",
-  summary: "the last lines of one task's engine event stream, as the engine wrote them",
+  summary: "the last lines of one task's engine event stream, as the engine wrote them, the task named by its whole id or by a start "
+    + "of it that only one task's id begins with",
   positionals: ["id"],
   flags: { "--lines": "n" },
   check: linesCheck,
@@ -969,11 +987,177 @@ const logVerb: Verb = {
     const found = await project(parsed, context);
     if ("reason" in found) return refused(found.reason);
     const [id] = parsed.positionals;
-    const record = taskNamed(found.root, id);
-    if (record === null) return refused(`no task ${id}`);
+    const named = taskNamed(found.root, id);
+    if ("reason" in named) return refused(named.reason);
+    const { record } = named;
     // A task whose engine has said nothing yet has an empty log, and that is an answer.
     const lines = tailLines(record.logPath, lineCount(parsed, 50));
     return { code: EXIT.ok, document: { id: record.id, logPath: record.logPath, lines }, text: lines.map((line) => `${line}\n`).join("") };
+  },
+};
+
+/** `--role` as `watch` takes it: roles, or `<role>#<seat>` for one seat, separated by commas, none of them empty. */
+function rolesCheck(parsed: Parsed): string | null {
+  const value = parsed.values["--role"];
+  if (value === undefined || value.split(",").every((piece) => piece.trim() !== "")) return null;
+  return `--role takes role names separated by commas, not ${JSON.stringify(value)}`;
+}
+
+/** `--port` as `watch` takes it: only beside `--web`, and a port, 0 for any free one. */
+function portCheck(parsed: Parsed): string | null {
+  const value = parsed.values["--port"];
+  if (value === undefined) return null;
+  if (!parsed.booleans.has("--web")) return "--port needs --web";
+  if (!/^\d+$/.test(value) || Number(value) > 65_535) return `--port must be a whole number from 0 to 65535, not ${JSON.stringify(value)}`;
+  return null;
+}
+
+/** `--idle-exit` as `watch` takes it: only beside `--web`, and a whole number of seconds from 1. */
+function idleCheck(parsed: Parsed): string | null {
+  const value = parsed.values["--idle-exit"];
+  if (value === undefined) return null;
+  if (!parsed.booleans.has("--web")) return "--idle-exit needs --web";
+  if (!/^[1-9]\d*$/.test(value)) return `--idle-exit must be a whole number of seconds from 1, not ${JSON.stringify(value)}`;
+  return null;
+}
+
+/**
+ * `watch --web`: the same follow loop served as a read-only page on 127.0.0.1
+ * (`src/web.ts#serveWatch`) until Ctrl-C or SIGTERM, or with `--idle-exit` until it has
+ * been idle that long, any of which is its 0. Its address is the one line it prints on
+ * stdout, a banner beside it on stderr, or under `--json` one `listening` event; a listen
+ * that fails is any verb's 1, before anything is printed, and a follow loop that fails
+ * after it ends the watch with a 1 and one last line, as the text watch does.
+ */
+async function watchWeb(
+  root: string, roles: string[] | undefined, port: number | undefined, idleSeconds: number | undefined, json: boolean, context: Context,
+): Promise<Answer> {
+  const controller = new AbortController();
+  const stop = () => controller.abort();
+  process.on("SIGINT", stop);
+  process.on("SIGTERM", stop);
+  try {
+    const served = await serveWatch(root, {
+      signal: controller.signal, ...(roles === undefined ? {} : { roles }), ...(port === undefined ? {} : { port }),
+      ...(idleSeconds === undefined ? {} : { idleMs: idleSeconds * 1000 }),
+    });
+    if (json) {
+      context.write.out(`${JSON.stringify({ event: "listening", url: served.url, port: served.port })}\n`);
+    } else {
+      context.write.out(`${served.url}\n`);
+      context.write.err(`cross-agent: serving ${root} read-only at the address above; Ctrl-C stops\n`);
+    }
+    try {
+      await served.done;
+    } catch (error) {
+      if (json) context.write.out(`${JSON.stringify({ event: "error", error: message(error) })}\n`);
+      else context.write.err(`cross-agent: ${message(error)}\n`);
+      return { code: EXIT.error, document: null, text: "", streamed: true };
+    }
+  } finally {
+    process.removeListener("SIGINT", stop);
+    process.removeListener("SIGTERM", stop);
+  }
+  return { code: EXIT.ok, document: null, text: "", streamed: true };
+}
+
+/**
+ * One event of `watch` as a person reads it, after the task's label — its role as `tasks`
+ * spells it, its lead's before it for a task a lead delegated — and the first six characters
+ * of its id. Empty for a step the text leaves out: a still-thinking event right after another
+ * of the same task, and a successful result that closes no command, whose detail `--json`
+ * keeps.
+ */
+function watchLine(event: WatchEvent, thinking: Map<string, boolean>): string {
+  const { task } = event;
+  const prefix = `${task.parent === null ? "" : `${roleCell(task.parent)}/`}${roleCell(task)} ${task.id.slice(0, 6)}  `;
+  const resumes = task.resumedFrom === null ? "" : `, resumes ${task.resumedFrom.slice(0, 6)}`;
+  switch (event.event) {
+    case "following":
+      // Its own status, so a task stalled, orphaned or still launching never reads as running.
+      return `${prefix}${task.status} ${span(elapsedSeconds(task, Date.now()))}, ${runsOn(task)}${resumes}\n`;
+    case "started":
+      return `${prefix}started, ${runsOn(task)}${resumes}\n`;
+    case "status":
+      // The line ends a run of still-thinking lines, so thinking after it is printed again.
+      thinking.delete(task.id);
+      return `${prefix}now ${task.status}\n`;
+    case "settled": {
+      // A failure's reason is the engine's own words, and is read as a summary is.
+      const said = task.reason === undefined ? "" : summaryLine(task.reason);
+      return `${prefix}${task.status} after ${span(elapsedSeconds(task, Date.now()))}${said === "" ? "" : `: ${said}`}\n`;
+    }
+    case "step": {
+      const { step } = event;
+      if (step.kind === "thinking-progress") {
+        // Claude reports one every fifty tokens or so: one line says it is thinking.
+        if (thinking.get(task.id) === true) return "";
+        thinking.set(task.id, true);
+      } else if (step.kind === "result" && step.ok && step.exitCode === null) {
+        return "";
+      } else {
+        thinking.delete(task.id);
+      }
+      return `${prefix}${step.summary}\n`;
+    }
+  }
+}
+
+const watchVerb: Verb = {
+  usage: "cross-agent watch [--role <role>[,<role>...]] [--web [--port <n>] [--idle-exit <seconds>]] [--project <root>]",
+  summary: "follows every active task until Ctrl-C, one line per step labelled by its role; tasks that start later are included; "
+    + "--json prints one JSON event per line; --web serves the same steps as a read-only live page on 127.0.0.1 and prints its URL, "
+    + "and with --idle-exit ends by itself once no page has been open and no task active for that many seconds",
+  positionals: [],
+  flags: { "--role": "role[,role...]", "--port": "n", "--idle-exit": "seconds" },
+  booleans: ["--web"],
+  check: (parsed) => rolesCheck(parsed) ?? portCheck(parsed) ?? idleCheck(parsed),
+  writes: false,
+  async run(parsed, context) {
+    const found = await project(parsed, context);
+    if ("reason" in found) return refused(found.reason);
+    const roles = parsed.values["--role"]?.split(",").map((piece) => piece.trim());
+    if (parsed.booleans.has("--web")) {
+      const port = parsed.values["--port"];
+      const idle = parsed.values["--idle-exit"];
+      return watchWeb(found.root, roles, port === undefined ? undefined : Number(port), idle === undefined ? undefined : Number(idle), parsed.json, context);
+    }
+    // Ctrl-C ends the watch, and so does a reader that has left: the next write finds no
+    // reader, and the stream says so once (`cross-agent watch | head`). Both are this
+    // verb's alone, so every other verb keeps Node's own Ctrl-C.
+    const controller = new AbortController();
+    const stop = () => controller.abort();
+    process.once("SIGINT", stop);
+    process.stdout.once("error", stop);
+    let wrote = false;
+    try {
+      if (!parsed.json) context.write.err(`cross-agent: watching ${found.root}; Ctrl-C stops\n`);
+      const thinking = new Map<string, boolean>();
+      try {
+        for await (const event of follow(found.root, { signal: controller.signal, ...(roles === undefined ? {} : { roles }) })) {
+          // One compact object per line: a stream has no one document to wait for. A step's
+          // time and figure are the page's, and stay out: `--json` keeps `{event, task, step?}`.
+          if (parsed.json) context.write.out(`${JSON.stringify(event.event === "step" ? { event: event.event, task: event.task, step: event.step } : event)}\n`);
+          else {
+            const line = watchLine(event, thinking);
+            if (line !== "") context.write.out(line);
+          }
+          wrote = true;
+        }
+      } catch (error) {
+        // Before the first event nothing has been streamed, and a failure is any verb's: one
+        // document under `--json`. After it, stdout is a stream of events, so the failure is
+        // the stream's last, one compact line like the rest.
+        if (!wrote) throw error;
+        if (parsed.json) context.write.out(`${JSON.stringify({ event: "error", error: message(error) })}\n`);
+        else context.write.err(`cross-agent: ${message(error)}\n`);
+        return { code: EXIT.error, document: null, text: "", streamed: true };
+      }
+    } finally {
+      process.removeListener("SIGINT", stop);
+      process.stdout.removeListener("error", stop);
+    }
+    return { code: EXIT.ok, document: null, text: "", streamed: true };
   },
 };
 
@@ -1340,6 +1524,7 @@ const verbs: Record<string, Verb> = {
   tasks: tasksVerb,
   show: showVerb,
   log: logVerb,
+  watch: watchVerb,
   cancel: cancelVerb,
   "verify-worktree": verifyWorktreeVerb,
   git: gitVerb,
@@ -1369,18 +1554,21 @@ function usageOf(verb?: Verb): string {
   return `usage: ${first}\n${rest.map((line) => `  ${line}\n`).join("")}`;
 }
 
+/** What `--json` prints: one document, but for `watch`, whose answer is a stream that ends only when it is stopped. */
+const JSON_RULE = "--json prints one JSON document on stdout, whatever the exit; watch prints one JSON event per line";
+
 /** Help, as text or as the one JSON document `--json` asks for: the same verbs, rule and protocol. */
 function help(json: boolean): string {
   const usage = usageLines()[0];
   if (json) {
     const document = {
       ok: true, usage, verbs: Object.values(verbs).map((verb) => ({ usage: verb.usage, summary: verb.summary })),
-      json: "--json prints one JSON document on stdout, whatever the exit", project: PROJECT_RULE, exit: PROTOCOL,
+      json: JSON_RULE, project: PROJECT_RULE, exit: PROTOCOL,
     };
     return `${JSON.stringify(document, null, 2)}\n`;
   }
   // The rule wrapped as the rest of the help is, at the width it always had.
-  const lines = wrap(`--json prints one JSON document on stdout, whatever the exit; --help prints this. ${PROJECT_RULE}`, 96);
+  const lines = wrap(`${JSON_RULE}; --help prints this. ${PROJECT_RULE}`, 96);
   return `usage: ${usage}\n\n`
     + Object.values(verbs).map((verb) => `  ${verb.usage}\n      ${verb.summary}\n`).join("")
     + `\n${lines.join("\n")}\n\n`
@@ -1544,12 +1732,13 @@ export async function runCli(
   const marker = taskMarker(verb, parsed, env);
   let answered: Answer;
   try {
+    const context: Context = { cwd, env, write };
     const evidence = marker !== null ? `${marker} is set in this environment`
-      : writing(verb, parsed) ? await ancestryRefusal(parsed, { cwd, env }) : null;
+      : writing(verb, parsed) ? await ancestryRefusal(parsed, context) : null;
     const reason = `${evidence}: ${name} is an operator's command, and an engine reaches the project through its server, never this CLI`;
     answered = evidence !== null
       ? refused(reason, verb.codes?.(parsed) === true ? { ok: false, code: "inside-a-task", reason } : undefined)
-      : await verb.run(parsed, { cwd, env });
+      : await verb.run(parsed, context);
   } catch (error) {
     if (error instanceof UsageError) return usageError(error.message, verb);
     // Nothing a verb anticipated: the message, as the one document under `--json`.
@@ -1557,6 +1746,8 @@ export async function runCli(
     else write.err(`cross-agent: ${message(error)}\n`);
     return EXIT.error;
   }
+  // Already written, as it went.
+  if (answered.streamed === true) return answered.code;
   if (parsed.json) {
     write.out(`${JSON.stringify(answered.document, null, 2)}\n`);
   } else {

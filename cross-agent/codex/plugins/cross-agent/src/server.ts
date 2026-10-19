@@ -28,6 +28,7 @@ import { cancel, check, defaultSettledLimit, lineageIds, listTasks, ownedBy, res
 import { scan, taskStatuses } from "./ledger.ts";
 import type { TaskStatus } from "./ledger.ts";
 import { wait } from "./wait.ts";
+import { watchPage } from "./watcher.ts";
 import { verifyWorktree } from "./worktree.ts";
 
 // cross-agent MCP server: JSON-RPC 2.0 over stdio, one message per line.
@@ -506,6 +507,24 @@ function worktreeTools(projectRoot: string, mode: Mode): ToolDefinition[] {
   ];
 }
 
+/**
+ * `watch_page` (design section 10): the address of the project's read-only watch page for
+ * the user, its watcher started when none is running (`src/watcher.ts#watchPage`). It is
+ * the operator's alone, under every mode, because it starts a process that outlives the
+ * session that called it: a lead or a specialist starts nothing that its cancel, its
+ * runner's cleanup or its own end would not reach, and this watcher is reached by none of
+ * them — it carries no task's marker and leads its own group and session.
+ */
+function watchPageTool(projectRoot: string): ToolDefinition {
+  return {
+    name: "watch_page",
+    description: "The address of this project's read-only live watch page, http://127.0.0.1:<port>/<token>, to give the user once: the running watcher's when .cross-agent/watch.json names one that is alive and answers, else a new detached cross-agent watch --web this call starts from the project root, which outlives this session and stops by itself after 10 minutes with no open page and no active task. Answers ok, url, port, pid and started.",
+    inputSchema: { type: "object", properties: {} },
+    rows: ["operator"],
+    handler: async () => answer(await watchPage(projectRoot)),
+  };
+}
+
 /** A wait-shaped budget in seconds, checked as `wait` checks its own: finite and not negative. */
 function timeoutSeconds(args: Json, name: string): number | undefined {
   const value = optional(args, "timeout_seconds", "number", name) as number | undefined;
@@ -915,6 +934,7 @@ export function projectTools(projectRoot: string, options: ToolOptions): ToolDef
       },
     },
     ...worktreeTools(projectRoot, mode),
+    watchPageTool(projectRoot),
     // The mailbox exists where a lead runs in an engine and nowhere else.
     ...(mode.lead.placement === "engine" ? mailboxTools(projectRoot) : []),
     // `record` and `track` exist where the config this server started with keeps records.

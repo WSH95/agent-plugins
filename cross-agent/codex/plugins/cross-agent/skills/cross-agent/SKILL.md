@@ -204,6 +204,17 @@ already in this session's lineage is a loop the server will not close. Read the
 reason aloud and decide; `force` crosses the finished window and never a live
 task.
 
+Under `host` placement, before the first task you delegate in a session, call
+`watch_page` and give the user the `url` it answers, once, on a line of its own —
+*watch the team live: <url>* — whatever the mode. It is a read-only page on this
+machine's 127.0.0.1 that shows every task's steps as they happen; its watcher
+outlives your session and stops by itself once no task has been active and no page
+open for 10 minutes. Call it again only when the user asks for the page: it answers
+the same address while that watcher runs, and a new one once it has stopped. An
+answer with `ok: false` stops nothing: tell the user the page could not start, with
+its `reason`, and go on. Under `engine` placement you do the same as you start the
+lead (`## Engine placement`).
+
 ## Watching
 
 `wait {task_id, timeout_seconds}` is how you follow a task. It returns when the
@@ -489,7 +500,9 @@ part is setup, monitoring and answering.
 Show the roster first, as `## Before delegating` asks: `projectRoot` on its first
 line, judged as that section says, then `list_roles`, one line per role, the lead's
 among them, with its engine, model, effort, workspace and sandbox, so the user sees
-what this run will start, and where, before it starts. Then start the lead with
+what this run will start, and where, before it starts. Then call `watch_page` and
+give the user its link once, as `## Starting a task` says — the lead's specialists
+sit under it in the page's task list — then start the lead with
 one call: `delegate {role: <lead.role>, cwd: <project root>, brief}`, the role being
 `mode.lead.role` from `describe_mode` and the brief the task itself — or, where
 `describe_mode` answers `records`, the epic, the list of tracker ids or the goal the
@@ -554,8 +567,8 @@ yours comes after it rather than in its place. `cross-agent report` renders ever
 task of the run from the ledger.
 
 Your own calls under this placement are the launcher's setup, monitoring and
-answering — `describe_mode`, `list_roles`, `list_tasks`, the one `delegate` of the
-lead, `wait`, `check`, `result`, `list_asks`, `answer`, `cancel` and
+answering — `describe_mode`, `list_roles`, `list_tasks`, `watch_page`, the one
+`delegate` of the lead, `wait`, `check`, `result`, `list_asks`, `answer`, `cancel` and
 `waive_review`, the last on the user's explicit word alone, when the lead's
 question asks for a waiver — and never a loop step: while a lead is live you never
 call `git_root`, `git_mutate`, `run_command`, `verify_worktree`, `track` or `record`,
