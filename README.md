@@ -144,6 +144,15 @@ to reconnect. Ask for setup again to change the team, a role's engine or model,
 or the test command. A git repository with no config runs the one-consultant
 `solo` mode with no setup.
 
+Before the first task it delegates, your session gives you a link to a
+read-only page that shows every task's steps as they happen; ask for the page
+again to get its link. The page is on 127.0.0.1 of the machine your session
+runs on: open the link there, or from another machine forward its port to the
+same port number. In the project, the operator CLI's `cross-agent watch`
+prints the same steps as lines, and `cross-agent watch --web` serves the page
+at an address of its own:
+[Watching in a browser](https://github.com/WSH95/cross-agent-cli/blob/main/docs/operator-guide.md#watching-in-a-browser).
+
 For Claude Code, install `cross-agent` at user scope or with
 `--scope local`, not `--scope project`, which every Claude specialist would
 load. Then run `/cross-agent:setup` in a project. The plugin also puts its
@@ -165,6 +174,8 @@ repository rather than with `grok plugin install`, which would load it in
 every Grok session:
 [Install it in Grok](https://github.com/WSH95/cross-agent-cli/blob/main/docs/install.md#install-it-in-grok).
 Then run `/setup` in the trusted project, or ask Grok to set up cross-agent.
+Grok also loads the plugins Claude Code installs, so with both on one
+machine, see that guide's Claude Code section for the switch.
 
 For OpenClaw, which runs the one-consultant `solo` mode and the background team
 (`dev-team-engine`) but not the team whose loop runs in your own session, install the
@@ -177,8 +188,6 @@ Or ask OpenClaw to set up cross-agent for that project, which registers it once 
 the background team's lead puts its questions to you in the chat. Update with `openclaw
 plugins update cross-agent --accept-capabilities` while no task is running: OpenClaw asks for
 the plugin's capabilities again on every update from this source.
-Grok also loads the plugins Claude Code installs, so with both on one
-machine, see that guide's Claude Code section for the switch.
 
 Example interactions:
 
